@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#040403">
+<link rel="manifest" id="pwa-manifest">
+<title>My Daily Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#040403;--surf:#0c0a08;--surf2:#121009;--surf3:#1a1612;
+  --border:#201c15;--border2:#2a2418;--text:#eee8de;--text2:#9a8f7e;--text3:#5a5040;
+  --amber:#e8920f;--amber-d:#b86d07;--amber-bg:rgba(232,146,15,0.10);--amber-bdr:rgba(232,146,15,0.22);
+  --teal:#1aad9a;--teal-bg:rgba(26,173,154,0.10);--teal-bdr:rgba(26,173,154,0.22);
+  --rose:#e0436a;--rose-bg:rgba(224,67,106,0.10);--rose-bdr:rgba(224,67,106,0.22);
+  --indigo:#6b7de8;--indigo-bg:rgba(107,125,232,0.10);--indigo-bdr:rgba(107,125,232,0.22);
+  --purple:#b06de0;--purple-bg:rgba(176,109,224,0.10);--green:#3dbf72;--green-bg:rgba(61,191,114,0.10);--green-bdr:rgba(61,191,114,0.25);
+  --r:14px;--r-sm:10px;--r-xs:7px;
+  --sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);
+  --sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px);
+  --header-h:62px;--nav-h:58px;
+}
+
+/* ── LIGHT MODE ─────────────────────────────────────────────────── */
+body.light{
+  --bg:#f4efe6;--surf:#ffffff;--surf2:#faf6f0;--surf3:#ede8df;
+  --border:#ddd5c5;--border2:#ccc4b2;--text:#1a1208;--text2:#5a4e3a;--text3:#9a8f7e;
+  --amber:#c97a00;--amber-d:#a06000;--amber-bg:rgba(201,122,0,0.10);--amber-bdr:rgba(201,122,0,0.28);
+  --teal:#0d8c7c;--teal-bg:rgba(13,140,124,0.10);--teal-bdr:rgba(13,140,124,0.28);
+  --rose:#c22050;--rose-bg:rgba(194,32,80,0.10);--rose-bdr:rgba(194,32,80,0.28);
+  --indigo:#4a5cd4;--indigo-bg:rgba(74,92,212,0.10);--indigo-bdr:rgba(74,92,212,0.28);
+  --purple:#8a4ec0;--purple-bg:rgba(138,78,192,0.10);--green:#2a9e58;--green-bg:rgba(42,158,88,0.10);--green-bdr:rgba(42,158,88,0.28);
+}
+body.light .header{backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:0 1px 8px rgba(0,0,0,0.08);}
+body.light input[type="date"]{color-scheme:light;}
+body.light .edit-sheet{box-shadow:0 -8px 40px rgba(0,0,0,0.15);}
+body.light .score-card{box-shadow:0 2px 12px rgba(0,0,0,0.06);}
+body.light .stat-card{box-shadow:0 1px 6px rgba(0,0,0,0.05);}
+
+html{height:100%;overscroll-behavior:none;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;transition:background 0.25s,color 0.25s;}
+::-webkit-scrollbar{display:none;}*{scrollbar-width:none;}
+.app{display:flex;flex-direction:column;height:100vh;height:100dvh;position:fixed;inset:0;}
+.header{flex-shrink:0;background:var(--surf);border-bottom:1px solid var(--border);padding-top:calc(var(--sat) + 10px);padding-bottom:10px;padding-left:calc(var(--sal) + 16px);padding-right:calc(var(--sar) + 16px);display:flex;align-items:center;justify-content:space-between;z-index:50;backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);transition:background 0.25s,border-color 0.25s;}
+.header-title{font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:700;letter-spacing:-0.02em;color:var(--text);line-height:1;}
+.header-title span{color:var(--amber);}
+.header-sub{font-size:0.7rem;color:var(--text3);margin-top:3px;letter-spacing:0.01em;}
+.header-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+.header-top-row{display:flex;align-items:center;gap:8px;}
+.date-pill{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr);padding:4px 11px;border-radius:99px;font-size:0.7rem;font-weight:600;white-space:nowrap;font-family:'DM Mono',monospace;}
+.streak-pill{font-size:0.68rem;color:var(--rose);font-weight:600;}
+
+/* ── THEME TOGGLE ──────────────────────────────────────────────── */
+.theme-toggle{background:var(--surf3);border:1.5px solid var(--border2);border-radius:99px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1;-webkit-tap-highlight-color:transparent;transition:all 0.2s;flex-shrink:0;}
+.theme-toggle:active{transform:scale(0.9);}
+
+.scroll-area{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;}
+.bottom-nav{flex-shrink:0;background:var(--surf);border-top:1px solid var(--border);padding-bottom:var(--sab);display:flex;align-items:stretch;z-index:50;transition:background 0.25s,border-color 0.25s;}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 4px;border:none;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent;min-height:var(--nav-h);position:relative;-webkit-user-select:none;user-select:none;transition:opacity 0.1s;}
+.nav-btn:active{opacity:0.6;}
+.nav-icon{font-size:20px;line-height:1;transition:transform 0.2s cubic-bezier(.34,1.56,.64,1);}
+.nav-label{font-size:0.58rem;font-weight:600;color:var(--text3);letter-spacing:0.03em;text-transform:uppercase;transition:color 0.15s;}
+.nav-btn.active .nav-label{color:var(--amber);}
+.nav-btn.active .nav-icon{transform:scale(1.15);}
+.nav-dot{position:absolute;top:6px;width:5px;height:5px;border-radius:50%;background:var(--amber);display:none;}
+.nav-btn.active .nav-dot{display:block;}
+.section{display:none;padding:0 0 24px;}
+.section.active{display:block;animation:slideUp 0.22s cubic-bezier(.4,0,.2,1);}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+.subnav{display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:0;border-bottom:1px solid var(--border);background:var(--surf);position:sticky;top:0;z-index:10;}
+.subnav::-webkit-scrollbar{display:none;}
+.subnav-btn{flex-shrink:0;padding:12px 16px;border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:500;color:var(--text3);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;transition:color 0.15s;min-height:44px;}
+.subnav-btn.active{color:var(--amber);border-bottom-color:var(--amber);}
+.sec-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--text);padding:18px 16px 4px;letter-spacing:-0.01em;}
+.panel{background:var(--surf);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:16px;margin-bottom:8px;}
+.panel-label{font-size:0.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px;margin-bottom:8px;}
+.stat-card{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:14px 12px;text-align:center;position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2.5px;border-radius:var(--r) var(--r) 0 0;}
+.sc-amber::before{background:var(--amber);}.sc-teal::before{background:var(--teal);}.sc-rose::before{background:var(--rose);}.sc-indigo::before{background:var(--indigo);}
+.stat-val{font-family:'Playfair Display',serif;font-size:1.65rem;font-weight:700;line-height:1.1;}
+.sc-amber .stat-val{color:var(--amber);}.sc-teal .stat-val{color:var(--teal);}.sc-rose .stat-val{color:var(--rose);}.sc-indigo .stat-val{color:var(--indigo);}
+.stat-lbl{font-size:0.65rem;color:var(--text3);margin-top:4px;font-weight:500;}
+.prog-wrap{padding:0 16px;margin-bottom:8px;}
+.prog-row{display:flex;justify-content:space-between;font-size:0.72rem;color:var(--text3);margin-bottom:7px;}
+.prog-bar{height:5px;background:var(--surf3);border-radius:99px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:99px;transition:width 0.5s cubic-bezier(.4,0,.2,1);}
+.pf-amber{background:linear-gradient(90deg,var(--amber-d),var(--amber));}.pf-teal{background:linear-gradient(90deg,#0e8a7a,var(--teal));}.pf-green{background:linear-gradient(90deg,#28955a,var(--green));}.pf-rose{background:linear-gradient(90deg,#a02040,var(--rose));}
+.form-group{margin-bottom:12px;}.form-group:last-child{margin-bottom:0;}
+.field-label{display:block;font-size:0.72rem;font-weight:600;color:var(--text2);margin-bottom:6px;letter-spacing:0.02em;}
+input[type="text"],input[type="number"],input[type="date"],select,textarea{width:100%;font-size:16px;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--surf3);border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:12px 14px;outline:none;-webkit-appearance:none;appearance:none;transition:border-color 0.2s,box-shadow 0.2s,background 0.2s,color 0.2s;min-height:48px;}
+input[type="text"]:focus,input[type="number"]:focus,input[type="date"]:focus,select:focus,textarea:focus{border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-bg);}
+input[type="date"]{color-scheme:dark;}
+input::placeholder,textarea::placeholder{color:var(--text3);}
+textarea{resize:none;min-height:80px;padding:12px 14px;}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239a8f7e' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px;}
+select option{background:var(--surf2);color:var(--text);}
+.tp-wrap{display:flex;align-items:center;gap:4px;background:var(--surf3);border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:0 12px;height:48px;transition:border-color 0.2s,box-shadow 0.2s;}
+.tp-wrap:focus-within{border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-bg);}
+.tp-wrap select{background:transparent!important;border:none!important;outline:none!important;box-shadow:none!important;padding:0 2px!important;min-height:unset!important;font-size:16px;width:auto;font-weight:600;color:var(--text);}
+.tp-sep{color:var(--amber);font-weight:700;font-size:1rem;padding:0 1px;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;border-radius:var(--r-sm);min-height:48px;padding:0 18px;font-size:15px;transition:opacity 0.12s,transform 0.1s;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
+.btn:active{opacity:0.75;transform:scale(0.97);}
+.btn-primary{background:var(--amber);color:#fff;box-shadow:0 2px 16px rgba(232,146,15,0.28);}
+.btn-primary:active{background:var(--amber-d);}
+.btn-ghost{background:transparent;border:1.5px solid var(--border2);color:var(--text2);font-size:14px;min-height:40px;padding:0 14px;}
+.btn-ghost:active{border-color:var(--amber);color:var(--amber);}
+.btn-del{background:transparent;border:1.5px solid var(--rose-bdr);color:var(--rose);font-size:13px;min-height:36px;padding:0 12px;border-radius:99px;}
+.btn-del:active{background:var(--rose-bg);}
+.btn-full{width:100%;}.btn-row{display:flex;gap:8px;margin-top:14px;}.btn-row .btn{flex:1;}
+.list-item{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);position:relative;min-height:64px;}
+.list-item:last-child{border-bottom:none;}
+.item-bar{position:absolute;left:0;top:0;bottom:0;width:3px;}
+.bar-amber{background:var(--amber);}.bar-teal{background:var(--teal);}.bar-rose{background:var(--rose);}.bar-indigo{background:var(--indigo);}
+.item-time{background:var(--surf3);border:1px solid var(--border2);border-radius:var(--r-xs);padding:4px 8px;font-size:0.68rem;font-weight:600;color:var(--text2);white-space:nowrap;text-align:center;font-family:'DM Mono',monospace;min-width:70px;}
+.item-info{flex:1;min-width:0;}
+.item-title{font-size:15px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.item-sub{font-size:12px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.badge{font-size:0.62rem;font-weight:700;padding:3px 8px;border-radius:99px;white-space:nowrap;flex-shrink:0;}
+.badge-amber{background:rgba(232,146,15,0.12);color:var(--amber);border:1px solid var(--amber-bdr);}
+.badge-teal{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-bdr);}
+.badge-rose{background:var(--rose-bg);color:var(--rose);border:1px solid var(--rose-bdr);}
+.badge-indigo{background:var(--indigo-bg);color:var(--indigo);border:1px solid var(--indigo-bdr);}
+.act-card{background:var(--surf);border-bottom:1px solid var(--border);padding:14px 16px;}
+.act-card:last-child{border-bottom:none;}
+.act-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.act-name{font-size:15px;font-weight:500;line-height:1.3;}
+.act-note{font-size:12px;color:var(--text3);line-height:1.4;margin-bottom:10px;}
+.act-foot{display:flex;align-items:center;justify-content:space-between;}
+.priority-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.dot-high{background:var(--rose);box-shadow:0 0 6px rgba(224,67,106,0.5);}
+.dot-med{background:var(--amber);box-shadow:0 0 6px rgba(232,146,15,0.5);}
+.dot-low{background:var(--teal);box-shadow:0 0 6px rgba(26,173,154,0.5);}
+.check-row{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text3);}
+.check-row input[type="checkbox"]{width:20px;height:20px;accent-color:var(--teal);cursor:pointer;flex-shrink:0;}
+.act-card.completed .act-name{text-decoration:line-through;color:var(--text3);}
+.act-card.completed{opacity:0.45;}
+.mood-row{display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:6px;padding:0 16px 2px;}
+.mood-row::-webkit-scrollbar{display:none;}
+.mood-btn{flex-shrink:0;background:var(--surf3);border:1.5px solid var(--border2);border-radius:99px;padding:8px 14px;font-size:14px;font-family:'DM Sans',sans-serif;font-weight:500;color:var(--text2);cursor:pointer;white-space:nowrap;min-height:40px;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;transition:all 0.15s;}
+.mood-btn.selected{background:var(--amber-bg);border-color:var(--amber);color:var(--amber);}
+.stars-row{display:flex;gap:6px;align-items:center;}
+.star-btn{font-size:22px;color:var(--text3);background:none;border:none;cursor:pointer;padding:4px;line-height:1;min-height:40px;min-width:36px;-webkit-tap-highlight-color:transparent;transition:transform 0.1s;}
+.star-btn:active{transform:scale(1.2);}
+.star-btn.lit{color:var(--amber);}
+.habit-item{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);min-height:60px;}
+.habit-item:last-child{border-bottom:none;}
+.hcheck{width:26px;height:26px;border-radius:8px;border:2px solid var(--border2);background:var(--surf3);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;font-size:14px;font-weight:700;color:#fff;transition:all 0.15s;-webkit-tap-highlight-color:transparent;min-width:26px;}
+.hcheck.on{background:var(--teal);border-color:var(--teal);}
+.hname{flex:1;font-size:15px;color:var(--text);}
+.hname.done{text-decoration:line-through;color:var(--text3);}
+.hstreak{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-bdr);border-radius:99px;padding:2px 8px;white-space:nowrap;}
+.watch-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);min-height:68px;}
+.watch-item:last-child{border-bottom:none;}
+.plat-icon{width:44px;height:44px;border-radius:10px;overflow:hidden;flex-shrink:0;}
+.plat-icon svg{width:100%;height:100%;display:block;}
+.watch-info{flex:1;min-width:0;}
+.watch-title{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.watch-meta{font-size:12px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.status-sel{font-size:13px!important;padding:6px 28px 6px 10px!important;width:auto!important;border-radius:99px!important;font-weight:600!important;min-height:36px!important;flex-shrink:0;background-position:right 8px center!important;}
+.sw{background:var(--teal-bg)!important;color:var(--teal)!important;border-color:var(--teal-bdr)!important;}
+.sp{background:var(--indigo-bg)!important;color:var(--indigo)!important;border-color:var(--indigo-bdr)!important;}
+.sd{background:var(--surf3)!important;color:var(--text3)!important;border-color:var(--border)!important;}
+.mini-list-item{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);font-size:14px;}
+.mini-list-item:last-child{border-bottom:none;}
+.mli-left{color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;margin-right:10px;}
+.mli-right{color:var(--text);font-weight:500;flex-shrink:0;}
+.bar-chart{display:flex;align-items:flex-end;gap:5px;height:80px;padding:0 16px;}
+.bar-col{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;}
+.bar{width:100%;border-radius:3px 3px 0 0;background:var(--surf3);min-height:3px;transition:height 0.5s cubic-bezier(.4,0,.2,1);}
+.bar.filled{background:linear-gradient(180deg,var(--amber),var(--amber-d));}
+.bar.today{box-shadow:0 0 12px rgba(232,146,15,0.35);}
+.bar-day{font-size:0.58rem;color:var(--text3);text-transform:uppercase;font-weight:600;}
+.bar-v{font-family:'DM Mono',monospace;font-size:0.58rem;color:var(--text3);}
+.week-strip{display:flex;gap:4px;padding:0 16px;margin-bottom:8px;}
+.wday{flex:1;background:var(--surf);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 4px;text-align:center;position:relative;}
+.wday.today{border-color:var(--amber);}
+.wday.has-data::after{content:'';position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--amber);}
+.wday-n{font-size:0.58rem;color:var(--text3);font-weight:600;text-transform:uppercase;margin-bottom:3px;}
+.wday-d{font-family:'DM Mono',monospace;font-size:0.78rem;color:var(--text2);}
+.wday.today .wday-d{color:var(--amber);}
+.hist-card{background:var(--surf);border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:8px;cursor:pointer;}
+.hist-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;}
+.hist-date{font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:600;color:var(--text);}
+.hist-rating{font-size:0.75rem;color:var(--amber);}
+.hist-chips{display:flex;flex-wrap:wrap;gap:5px;padding:0 16px 12px;}
+.hchip{font-size:0.65rem;font-weight:600;padding:3px 8px;border-radius:99px;}
+.hc-a{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr);}
+.hc-t{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-bdr);}
+.hc-i{background:var(--indigo-bg);color:var(--indigo);border:1px solid var(--indigo-bdr);}
+.hc-r{background:var(--rose-bg);color:var(--rose);border:1px solid var(--rose-bdr);}
+.hc-m{background:var(--surf3);color:var(--text2);border:1px solid var(--border2);}
+.hist-detail{display:none;border-top:1px solid var(--border);}
+.hist-detail.open{display:block;}
+.hist-journal{margin:12px 16px;background:var(--surf3);border-radius:var(--r-sm);padding:10px 12px;font-size:13px;color:var(--text2);line-height:1.55;}
+.section-gap{height:8px;}
+.empty{text-align:center;padding:32px 16px;color:var(--text3);}
+.empty-icon{font-size:2rem;opacity:0.3;margin-bottom:8px;}
+.empty-txt{font-size:13px;}
+.week-nav{display:flex;align-items:center;gap:8px;padding:0 16px;margin-bottom:12px;}
+.week-nav-lbl{flex:1;text-align:center;font-family:'Playfair Display',serif;font-size:0.9rem;font-weight:600;color:var(--text);}
+.report-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 16px;margin-bottom:8px;}
+.rstat{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:10px 8px;text-align:center;position:relative;overflow:hidden;}
+.rstat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.rs-a::before{background:var(--amber);}.rs-t::before{background:var(--teal);}.rs-i::before{background:var(--indigo);}.rs-r::before{background:var(--rose);}.rs-p::before{background:var(--purple);}.rs-g::before{background:var(--green);}
+.rstat-val{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;}
+.rs-a .rstat-val{color:var(--amber);}.rs-t .rstat-val{color:var(--teal);}.rs-i .rstat-val{color:var(--indigo);}.rs-r .rstat-val{color:var(--rose);}.rs-p .rstat-val{color:var(--purple);}.rs-g .rstat-val{color:var(--green);}
+.section-lbl{font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text3);padding:16px 16px 8px;}
+.journal-block{padding:0 16px;margin-bottom:8px;}
+.journal-block textarea{border-radius:var(--r);}
+.journal-foot{display:flex;align-items:center;justify-content:space-between;margin-top:10px;}
+.ov-card{background:var(--surf);border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:8px;}
+.ov-card-title{padding:12px 16px 0;font-size:0.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;}
+.pwa-banner{display:none;position:fixed;bottom:calc(var(--nav-h) + var(--sab) + 8px);left:16px;right:16px;background:var(--surf2);border:1px solid var(--amber-bdr);border-radius:var(--r);padding:12px 14px;z-index:100;flex-direction:row;align-items:center;gap:10px;box-shadow:0 4px 24px rgba(0,0,0,0.5);}
+.pwa-banner.show{display:flex;}
+.pwa-banner-txt{flex:1;font-size:13px;color:var(--text2);line-height:1.4;}
+.pwa-banner-txt strong{color:var(--amber);display:block;font-size:14px;margin-bottom:2px;}
+.pwa-x{background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:4px;line-height:1;}
+@media(min-width:640px){.app{max-width:440px;margin:0 auto;box-shadow:0 0 60px rgba(0,0,0,0.8);}}
+.edit-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;opacity:0;pointer-events:none;transition:opacity 0.25s;}
+.edit-backdrop.open{opacity:1;pointer-events:all;}
+.edit-sheet{position:fixed;bottom:0;left:0;right:0;max-width:440px;margin:0 auto;background:var(--surf2);border-radius:20px 20px 0 0;border-top:1px solid var(--border2);z-index:201;transform:translateY(100%);transition:transform 0.3s cubic-bezier(.32,0,.67,0);max-height:88dvh;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom,0px);}
+.edit-sheet.open{transform:translateY(0);transition:transform 0.3s cubic-bezier(.33,1,.68,1);}
+.edit-sheet-handle{width:36px;height:4px;background:var(--border2);border-radius:99px;margin:12px auto 0;}
+.edit-sheet-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 12px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.edit-sheet-title{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--text);}
+.edit-close-btn{background:var(--surf3);border:1px solid var(--border2);color:var(--text2);font-size:18px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;line-height:1;-webkit-tap-highlight-color:transparent;}
+.edit-close-btn:active{background:var(--border2);}
+.edit-sheet-body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;flex:1;}
+.edit-sheet-body .form-group{margin-bottom:14px;}
+.edit-actions{display:flex;gap:8px;padding:12px 16px 4px;border-top:1px solid var(--border);flex-shrink:0;}
+.edit-actions .btn{flex:1;}
+.btn-edit{background:transparent;border:1.5px solid var(--indigo-bdr);color:var(--indigo);font-size:12px;min-height:32px;padding:0 10px;border-radius:99px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;-webkit-tap-highlight-color:transparent;}
+.btn-edit:active{background:var(--indigo-bg);}
+
+/* ── PRODUCTIVITY SCORE CARD ───────────────────────────── */
+.score-card{margin:0 16px 8px;background:var(--surf);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;position:relative;}
+.score-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--amber-d),var(--amber),var(--teal));}
+.score-inner{padding:16px;}
+.score-row{display:flex;align-items:center;gap:14px;}
+.score-ring-wrap{position:relative;width:72px;height:72px;flex-shrink:0;}
+.score-ring-wrap svg{width:72px;height:72px;}
+.score-ring-val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.score-ring-num{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--amber);line-height:1;}
+.score-ring-pct{font-size:0.5rem;color:var(--text3);font-weight:600;}
+.score-details{flex:1;}
+.score-label{font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:4px;}
+.score-msg{font-size:12px;color:var(--text3);line-height:1.4;margin-bottom:10px;}
+.score-breakdown{display:flex;flex-direction:column;gap:5px;}
+.score-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);}
+.score-item-bar{flex:1;height:3px;background:var(--surf3);border-radius:99px;overflow:hidden;}
+.score-item-fill{height:100%;border-radius:99px;}
+.si-amber{background:var(--amber);}.si-teal{background:var(--teal);}.si-purple{background:var(--purple);}.si-rose{background:var(--rose);}
+.score-item-val{width:28px;text-align:right;font-family:'DM Mono',monospace;font-size:10px;color:var(--text2);}
+
+/* ── PLANS ────────────────────────────────────────────────────── */
+.plan-card{background:var(--surf);border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:8px;}
+.plan-card-inner{padding:16px;}
+.plan-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.plan-name{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--text);line-height:1.3;flex:1;}
+.plan-badge-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.plan-chip{font-size:0.65rem;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap;}
+.pc-countdown{background:var(--rose-bg);color:var(--rose);border:1px solid var(--rose-bdr);}
+.pc-countdown.soon{animation:urgentPulse 1.8s ease-in-out infinite;}
+@keyframes urgentPulse{0%,100%{opacity:1;}50%{opacity:0.55;}}
+.pc-today{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr);}
+.pc-done{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr);}
+.pc-past{background:var(--surf3);color:var(--text3);border:1px solid var(--border2);}
+.pc-hrs{background:var(--indigo-bg);color:var(--indigo);border:1px solid var(--indigo-bdr);}
+.pc-course{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-bdr);}
+.plan-prog-row{display:flex;justify-content:space-between;font-size:0.7rem;color:var(--text3);margin-bottom:6px;}
+.plan-prog-bar{height:6px;background:var(--surf3);border-radius:99px;overflow:hidden;margin-bottom:10px;}
+.plan-prog-fill{height:100%;border-radius:99px;transition:width 0.5s cubic-bezier(.4,0,.2,1);background:linear-gradient(90deg,var(--teal),var(--green));}
+.plan-prog-fill.overdue{background:linear-gradient(90deg,#a02040,var(--rose));}
+.plan-sessions{border-top:1px solid var(--border);margin-top:4px;}
+.plan-session-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.plan-session-row:last-child{border-bottom:none;}
+.plan-session-left{color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.plan-session-right{font-family:'DM Mono',monospace;font-size:12px;color:var(--amber);flex-shrink:0;margin-left:10px;}
+.plan-session-date{font-size:11px;color:var(--text3);margin-left:6px;}
+.plan-note{font-size:12px;color:var(--text3);line-height:1.4;margin-bottom:8px;font-style:italic;}
+
+/* ── PLAN QUICK-PICK (Study Log) ──────────────────────────────── */
+.plan-quickpick{padding:0 16px;margin-bottom:12px;}
+.plan-quickpick-label{font-size:0.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;}
+.plan-pick-scroll{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;}
+.plan-pick-scroll::-webkit-scrollbar{display:none;}
+.plan-pick-card{flex-shrink:0;background:var(--surf);border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:10px 12px;cursor:pointer;min-width:140px;max-width:180px;transition:border-color 0.15s,background 0.15s;-webkit-tap-highlight-color:transparent;}
+.plan-pick-card.selected{border-color:var(--amber);background:var(--amber-bg);}
+.plan-pick-card.no-plan{min-width:80px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px;border-style:dashed;}
+.plan-pick-name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;}
+.plan-pick-card.selected .plan-pick-name{color:var(--amber);}
+.plan-pick-meta{font-size:11px;color:var(--text3);display:flex;gap:6px;flex-wrap:wrap;}
+.plan-pick-days{font-family:'DM Mono',monospace;font-size:10px;border-radius:99px;padding:2px 6px;}
+.ppd-ok{background:var(--teal-bg);color:var(--teal);}
+.ppd-soon{background:var(--rose-bg);color:var(--rose);}
+.ppd-done{background:var(--green-bg);color:var(--green);}
+
+/* ── LINKED PLAN PREVIEW ─────────────────────────────── */
+.linked-plan-preview{margin:0 16px 8px;background:var(--surf);border:1px solid var(--amber-bdr);border-radius:var(--r);overflow:hidden;display:none;}
+.linked-plan-preview.show{display:block;animation:slideUp 0.2s ease;}
+.lpp-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 6px;}
+.lpp-name{font-family:'Playfair Display',serif;font-size:0.9rem;font-weight:700;color:var(--amber);}
+.lpp-days{font-size:11px;color:var(--text3);}
+.lpp-bar-wrap{padding:0 14px 10px;}
+.lpp-prog-row{display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:5px;}
+.lpp-bar{height:5px;background:var(--surf3);border-radius:99px;overflow:hidden;}
+.lpp-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--teal),var(--green));transition:width 0.5s cubic-bezier(.4,0,.2,1);}
+
+/* ── GOAL PLAN SELECT WIDGET ─────────────────────────── */
+.goal-plan-select-wrap{display:flex;gap:8px;align-items:stretch;}
+.goal-plan-select-wrap select{flex:1;}
+.goal-plan-select-clear{background:var(--surf3);border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:0 12px;font-size:13px;color:var(--text3);cursor:pointer;white-space:nowrap;min-height:48px;-webkit-tap-highlight-color:transparent;transition:all 0.15s;font-family:'DM Sans',sans-serif;}
+.goal-plan-select-clear:active{border-color:var(--rose);color:var(--rose);}
+
+/* ── COURSE NAME FIELD ───────────────────────────────── */
+.course-add-row{display:flex;gap:8px;margin-top:8px;}
+.course-add-row input{flex:1;}
+.course-add-row .btn-ghost{flex-shrink:0;padding:0 14px;font-size:13px;}
+
+/* ── DATA PANEL ──────────────────────────────────────── */
+.backup-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);}
+.backup-row:last-child{border-bottom:none;}
+.backup-txt{flex:1;}
+.backup-title{font-size:13px;font-weight:500;color:var(--text);}
+.backup-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+
+/* ── STUDY+PLAN HEADER STAT BAR ──────────────────────── */
+.sp-stat-bar{display:flex;gap:8px;padding:12px 16px 0;overflow-x:auto;}
+.sp-stat-bar::-webkit-scrollbar{display:none;}
+.sp-pill{flex-shrink:0;background:var(--surf);border:1px solid var(--border);border-radius:99px;padding:6px 14px;font-size:0.72rem;font-weight:600;display:flex;align-items:center;gap:6px;}
+.sp-pill span{color:var(--text3);}
+.sp-pill strong{font-family:'DM Mono',monospace;}
+.sp-pill.amber strong{color:var(--amber);}
+.sp-pill.teal strong{color:var(--teal);}
+.sp-pill.indigo strong{color:var(--indigo);}
+
+/* ── GOAL–PLAN LINK INDICATOR ─────────────────────────── */
+.goal-plan-link{display:flex;align-items:center;gap:6px;margin-top:6px;padding:6px 10px;background:var(--teal-bg);border:1px solid var(--teal-bdr);border-radius:var(--r-xs);font-size:11px;color:var(--teal);font-weight:600;animation:slideUp 0.2s ease;}
+.goal-plan-link-icon{font-size:13px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <div class="header-title">My Daily <span>Planner</span></div>
+      <div class="header-sub" id="header-sub"></div>
+    </div>
+    <div class="header-right">
+      <div class="header-top-row">
+        <div class="date-pill" id="date-pill">—</div>
+        <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button>
+      </div>
+      <div class="streak-pill" id="streak-pill">🔥 0 days</div>
+    </div>
+  </div>
+
+  <div class="scroll-area" id="scroll-area">
+
+    <!-- ─── HOME ─────────────────────────────────────────────── -->
+    <div class="section active" id="sec-home">
+      <div class="sec-title">Today at a Glance</div>
+      <div class="score-card">
+        <div class="score-inner">
+          <div class="score-row">
+            <div class="score-ring-wrap">
+              <svg viewBox="0 0 72 72"><circle cx="36" cy="36" r="30" fill="none" stroke="var(--surf3)" stroke-width="6"/><circle cx="36" cy="36" r="30" fill="none" stroke="var(--amber)" stroke-width="6" stroke-linecap="round" stroke-dasharray="188.5" id="score-ring-dash" stroke-dashoffset="188.5" transform="rotate(-90 36 36)" style="transition:stroke-dashoffset 0.8s cubic-bezier(.4,0,.2,1)"/></svg>
+              <div class="score-ring-val"><div class="score-ring-num" id="score-num">0</div><div class="score-ring-pct">SCORE</div></div>
+            </div>
+            <div class="score-details">
+              <div class="score-label" id="score-label">New Day ✨</div>
+              <div class="score-msg" id="score-msg">Log a session or complete a task to begin.</div>
+              <div class="score-breakdown">
+                <div class="score-item"><span>📚 Study</span><div class="score-item-bar"><div class="score-item-fill si-amber" id="sb-study" style="width:0%"></div></div><div class="score-item-val" id="sv-study">0%</div></div>
+                <div class="score-item"><span>✅ Tasks</span><div class="score-item-bar"><div class="score-item-fill si-teal" id="sb-tasks" style="width:0%"></div></div><div class="score-item-val" id="sv-tasks">0%</div></div>
+                <div class="score-item"><span>🎯 Habits</span><div class="score-item-bar"><div class="score-item-fill si-purple" id="sb-habits" style="width:0%"></div></div><div class="score-item-val" id="sv-habits">0%</div></div>
+                <div class="score-item"><span>⭐ Rating</span><div class="score-item-bar"><div class="score-item-fill si-rose" id="sb-rating" style="width:0%"></div></div><div class="score-item-val" id="sv-rating">0%</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section-lbl">How are you feeling?</div>
+      <div class="mood-row">
+        <button class="mood-btn" onclick="setMood('😴','Tired')" data-mood="Tired">😴 Tired</button>
+        <button class="mood-btn" onclick="setMood('😐','Okay')" data-mood="Okay">😐 Okay</button>
+        <button class="mood-btn" onclick="setMood('🙂','Good')" data-mood="Good">🙂 Good</button>
+        <button class="mood-btn" onclick="setMood('😄','Great')" data-mood="Great">😄 Great</button>
+      </div>
+      <div class="section-gap"></div>
+      <div class="stats-grid">
+        <div class="stat-card sc-amber"><div class="stat-val" id="ov-hrs">0h</div><div class="stat-lbl">Study Hours</div></div>
+        <div class="stat-card sc-teal"><div class="stat-val" id="ov-tasks">0/0</div><div class="stat-lbl">Tasks Done</div></div>
+        <div class="stat-card sc-indigo"><div class="stat-val" id="ov-sched">0</div><div class="stat-lbl">Scheduled</div></div>
+        <div class="stat-card sc-rose"><div class="stat-val" id="ov-plans">0</div><div class="stat-lbl">Active Plans</div></div>
+      </div>
+      <div class="prog-wrap">
+        <div class="prog-row"><span>Daily Study Goal</span><span id="ov-goal-txt">0 / 6 hrs</span></div>
+        <div class="prog-bar"><div class="prog-fill pf-amber" id="ov-goal-bar" style="width:0%"></div></div>
+      </div>
+      <div class="section-lbl">Journal &amp; Day Rating</div>
+      <div class="journal-block">
+        <textarea id="journal-text" placeholder="How's today going? Reflections, wins, anything on your mind…"></textarea>
+        <div class="journal-foot">
+          <div class="stars-row">
+            <button class="star-btn" onclick="setRating(1)" data-r="1">★</button>
+            <button class="star-btn" onclick="setRating(2)" data-r="2">★</button>
+            <button class="star-btn" onclick="setRating(3)" data-r="3">★</button>
+            <button class="star-btn" onclick="setRating(4)" data-r="4">★</button>
+            <button class="star-btn" onclick="setRating(5)" data-r="5">★</button>
+          </div>
+          <button class="btn btn-ghost" style="min-height:40px;font-size:13px;" onclick="saveJournal()">Save</button>
+        </div>
+      </div>
+      <div class="section-gap"></div>
+      <div class="ov-card"><div class="ov-card-title">Upcoming Schedule</div><div id="ov-sched-list"></div></div>
+      <div class="ov-card"><div class="ov-card-title">Pending Activities</div><div id="ov-act-list"></div></div>
+      <div class="ov-card"><div class="ov-card-title">Recent Study Sessions</div><div id="ov-sess-list"></div></div>
+      <div class="ov-card"><div class="ov-card-title">Active Plans</div><div id="ov-plans-list"></div></div>
+    </div>
+
+    <!-- ─── STUDY & PLAN ─────────────────────────────────────── -->
+    <div class="section" id="sec-studyplan">
+      <div class="subnav">
+        <button class="subnav-btn active" onclick="switchSubnav(this,'sp-study')">📚 Study Log</button>
+        <button class="subnav-btn" onclick="switchSubnav(this,'sp-plans');renderPlans();">📋 Plans</button>
+        <button class="subnav-btn" onclick="switchSubnav(this,'sp-sched')">🕐 Schedule</button>
+        <button class="subnav-btn" onclick="switchSubnav(this,'sp-acts')">✏️ Activities</button>
+      </div>
+
+      <!-- ── STUDY LOG ──────────────────────────────────────── -->
+      <div id="sp-study">
+        <div class="sec-title">📚 Study Log</div>
+        <div class="sp-stat-bar">
+          <div class="sp-pill amber"><span>Today</span><strong id="sp-hrs-today">0h</strong></div>
+          <div class="sp-pill amber"><span>Goal</span><strong id="sp-goal-val">6h</strong></div>
+          <div class="sp-pill teal"><span>Sessions</span><strong id="sp-sess-count">0</strong></div>
+          <div class="sp-pill indigo"><span>Plans</span><strong id="sp-active-plans">0</strong></div>
+        </div>
+        <div class="prog-wrap" style="margin-top:10px;">
+          <div class="prog-row"><span>Daily Study Goal</span><span id="study-prog-txt">0 / 6 hrs</span></div>
+          <div class="prog-bar"><div class="prog-fill pf-amber" id="study-prog-bar" style="width:0%"></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-label">Goal Settings</div>
+          <div class="form-group">
+            <label class="field-label">Study Goal (hours)</label>
+            <input type="number" id="study-goal" min="0.5" max="24" step="0.5" value="6" oninput="saveGoal()">
+          </div>
+          <div class="form-group">
+            <label class="field-label" style="display:flex;align-items:center;justify-content:space-between;">
+              Goal Label
+              <span id="goal-label-plan-hint" style="font-weight:600;font-size:0.65rem;color:var(--teal);display:none;gap:4px;align-items:center;">🔗 linked to plan</span>
+            </label>
+            <input type="text" id="goal-label" placeholder="e.g. May 10th Exam, DSA…" oninput="saveGoal()" list="plan-names-list" autocomplete="off">
+            <datalist id="plan-names-list"></datalist>
+          </div>
+          <!-- ── NEW: Plan selector dropdown under Goal Label ── -->
+          <div class="form-group">
+            <label class="field-label">🔗 Link Plan to Goal</label>
+            <div class="goal-plan-select-wrap">
+              <select id="goal-plan-dropdown" onchange="onGoalPlanDropdownChange(this.value)">
+                <option value="">— Select a Plan —</option>
+              </select>
+              <button class="goal-plan-select-clear" onclick="onGoalPlanDropdownChange('')" title="Clear plan link">✕ Clear</button>
+            </div>
+            <div id="goal-plan-link-banner" style="display:none;" class="goal-plan-link">
+              <span class="goal-plan-link-icon">🔗</span>
+              <span id="goal-plan-link-text">Sessions will be added to this plan</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PLAN QUICK-PICK -->
+        <div class="plan-quickpick" id="plan-quickpick-wrap">
+          <div class="plan-quickpick-label">Quick Select <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3);font-size:0.65rem;">(synced with dropdown above)</span></div>
+          <div class="plan-pick-scroll" id="plan-pick-scroll">
+            <div class="plan-pick-card no-plan selected" id="ppc-none" onclick="selectPlanPick(null)">No plan</div>
+          </div>
+        </div>
+
+        <!-- Linked plan live preview -->
+        <div class="linked-plan-preview" id="linked-plan-preview">
+          <div class="lpp-head">
+            <div class="lpp-name" id="lpp-name">—</div>
+            <div class="lpp-days" id="lpp-days"></div>
+          </div>
+          <div class="lpp-bar-wrap">
+            <div class="lpp-prog-row"><span id="lpp-hrs-label">0h logged</span><span id="lpp-pct">0%</span></div>
+            <div class="lpp-bar"><div class="lpp-fill" id="lpp-fill" style="width:0%"></div></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-label">Log a Session</div>
+          <div class="form-group"><label class="field-label">Subject</label><input type="text" id="sess-subject" placeholder="e.g. Mathematics"></div>
+          <div class="form-group"><label class="field-label">Duration (hours)</label><input type="number" id="sess-dur" min="0.25" max="24" step="0.25" placeholder="1.5"></div>
+          <div class="form-group"><label class="field-label">Time</label>
+            <div class="tp-wrap" id="tp-sess"><select class="tp-h"><option value="">--</option></select><span class="tp-sep">:</span><select class="tp-m"><option value="">--</option></select><select class="tp-ap"><option>AM</option><option>PM</option></select></div>
+          </div>
+          <div class="form-group"><label class="field-label">Notes</label><input type="text" id="sess-notes" placeholder="Topics covered…"></div>
+          <div class="btn-row"><button class="btn btn-primary btn-full" onclick="addSession()">+ Log Session</button></div>
+        </div>
+        <div class="section-lbl">Sessions Today</div>
+        <div class="ov-card" style="margin-bottom:8px;"><div id="session-list"></div></div>
+      </div>
+
+      <!-- ── PLANS ─────────────────────────────────────────── -->
+      <div id="sp-plans" style="display:none;">
+        <div class="sec-title">📋 Plans</div>
+        <div class="panel">
+          <div class="panel-label">Create a Plan</div>
+          <div class="form-group"><label class="field-label">Plan Name</label><input type="text" id="plan-name" placeholder="e.g. Physics Exam, Maths Final, Project X"></div>
+          <div class="form-group"><label class="field-label">Target Date</label><input type="date" id="plan-date"></div>
+          <div class="form-group">
+            <label class="field-label">Target Study Hours <span style="color:var(--text3);font-weight:400;">(optional)</span></label>
+            <input type="number" id="plan-hours" min="1" max="500" step="0.5" placeholder="e.g. 40">
+          </div>
+          <!-- ── NEW: Course Name field ──────────────────────── -->
+          <div class="form-group">
+            <label class="field-label" style="display:flex;align-items:center;justify-content:space-between;">
+              Course Name
+              <span style="color:var(--text3);font-weight:400;font-size:0.65rem;">optional</span>
+            </label>
+            <select id="plan-course">
+              <option value="">— Select Course —</option>
+            </select>
+            <div class="course-add-row" id="course-add-row" style="display:none;">
+              <input type="text" id="new-course-input" placeholder="Enter new course name…">
+              <button class="btn btn-ghost" onclick="saveNewCourse()">Add</button>
+              <button class="btn btn-ghost" onclick="cancelAddCourse()" style="padding:0 10px;">✕</button>
+            </div>
+            <div style="margin-top:8px;">
+              <button class="btn btn-ghost" style="font-size:12px;min-height:36px;padding:0 12px;" onclick="showAddCourse()">+ Add New Course</button>
+            </div>
+          </div>
+          <div class="form-group"><label class="field-label">Notes / Description</label><textarea id="plan-notes" placeholder="What do you need to cover? Chapters, topics…" style="min-height:70px;"></textarea></div>
+          <div class="btn-row"><button class="btn btn-primary btn-full" onclick="addPlan()">+ Create Plan</button></div>
+        </div>
+
+        <!-- Course Manager -->
+        <div class="section-lbl">Manage Courses</div>
+        <div class="ov-card" style="margin-bottom:8px;"><div id="courses-list"></div></div>
+
+        <div class="section-lbl">Your Plans</div>
+        <div id="plans-list-container"></div>
+      </div>
+
+      <!-- ── SCHEDULE ───────────────────────────────────────── -->
+      <div id="sp-sched" style="display:none;">
+        <div class="sec-title">Schedule</div>
+        <div class="panel">
+          <div class="panel-label">Add Time Block</div>
+          <div class="form-group"><label class="field-label">Title</label><input type="text" id="sch-title" placeholder="e.g. Physics revision"></div>
+          <div class="form-group"><label class="field-label">Type</label><select id="sch-type"><option value="study">Study</option><option value="break">Break</option><option value="activity">Activity</option><option value="watch">Watch</option></select></div>
+          <div class="form-group"><label class="field-label">Start Time</label><div class="tp-wrap" id="tp-sch-start"><select class="tp-h"><option value="">--</option></select><span class="tp-sep">:</span><select class="tp-m"><option value="">--</option></select><select class="tp-ap"><option>AM</option><option>PM</option></select></div></div>
+          <div class="form-group"><label class="field-label">End Time</label><div class="tp-wrap" id="tp-sch-end"><select class="tp-h"><option value="">--</option></select><span class="tp-sep">:</span><select class="tp-m"><option value="">--</option></select><select class="tp-ap"><option>AM</option><option>PM</option></select></div></div>
+          <div class="form-group"><label class="field-label">Description (optional)</label><input type="text" id="sch-desc" placeholder="Optional details"></div>
+          <div class="btn-row"><button class="btn btn-primary btn-full" onclick="addSchedule()">+ Add Block</button></div>
+        </div>
+        <div class="section-lbl">Today's Blocks</div>
+        <div class="ov-card" style="margin-bottom:8px;"><div id="schedule-list"></div></div>
+      </div>
+
+      <!-- ── ACTIVITIES ─────────────────────────────────────── -->
+      <div id="sp-acts" style="display:none;">
+        <div class="sec-title">Activities</div>
+        <div class="panel">
+          <div class="panel-label">Add Activity</div>
+          <div class="form-group"><label class="field-label">Activity Name</label><input type="text" id="act-name" placeholder="e.g. Morning walk"></div>
+          <div class="form-group"><label class="field-label">Priority</label><select id="act-priority"><option value="high">High</option><option value="med" selected>Medium</option><option value="low">Low</option></select></div>
+          <div class="form-group"><label class="field-label">Time (optional)</label><div class="tp-wrap" id="tp-act"><select class="tp-h"><option value="">--</option></select><span class="tp-sep">:</span><select class="tp-m"><option value="">--</option></select><select class="tp-ap"><option>AM</option><option>PM</option></select></div></div>
+          <div class="form-group"><label class="field-label">Notes</label><input type="text" id="act-notes" placeholder="Details, reminders…"></div>
+          <div class="btn-row"><button class="btn btn-primary btn-full" onclick="addActivity()">+ Add Activity</button></div>
+        </div>
+        <div class="section-lbl">Today's Activities</div>
+        <div class="ov-card" style="margin-bottom:8px;"><div id="activity-list"></div></div>
+      </div>
+    </div>
+
+    <!-- ─── HABITS ────────────────────────────────────────────── -->
+    <div class="section" id="sec-habits">
+      <div class="sec-title">🎯 Habits</div>
+      <div class="panel">
+        <div class="panel-label">Add a New Habit</div>
+        <div class="form-group"><label class="field-label">Habit Name</label><input type="text" id="habit-name" placeholder="e.g. Drink 8 glasses of water"></div>
+        <div class="btn-row"><button class="btn btn-primary btn-full" onclick="addHabit()">+ Add Habit</button></div>
+      </div>
+      <div class="prog-wrap">
+        <div class="prog-row"><span>Today's Habits</span><span id="habit-prog-txt">0 / 0</span></div>
+        <div class="prog-bar"><div class="prog-fill pf-teal" id="habit-prog-bar" style="width:0%"></div></div>
+      </div>
+      <div class="section-lbl">Daily Habits</div>
+      <div class="ov-card" style="margin-bottom:8px;"><div id="habit-list"></div></div>
+    </div>
+
+    <!-- ─── MORE ──────────────────────────────────────────────── -->
+    <div class="section" id="sec-more">
+      <div class="subnav">
+        <button class="subnav-btn active" onclick="switchSubnav(this,'more-watch');renderWatch();">▶ Watch</button>
+        <button class="subnav-btn" onclick="switchSubnav(this,'more-weekly');renderWeekly();">📊 Weekly</button>
+        <button class="subnav-btn" onclick="switchSubnav(this,'more-history');renderHistory();">🗂 History</button>
+        <button class="subnav-btn" onclick="switchSubnav(this,'more-settings');renderSettings();">⚙️ Data</button>
+      </div>
+      <div id="more-watch">
+        <div class="sec-title">Watch List</div>
+        <div class="panel">
+          <div class="panel-label">Add to Watch List</div>
+          <div class="form-group"><label class="field-label">Title / Channel</label><input type="text" id="watch-title" placeholder="e.g. Mirzapur S3"></div>
+          <div class="form-group"><label class="field-label">Platform</label><select id="watch-platform"><option value="youtube">YouTube</option><option value="netflix">Netflix</option><option value="jiohotstar">JioHotstar</option><option value="zee5">Zee5</option><option value="sonyliv">Sony LIV</option><option value="prime">Prime Video</option><option value="appletv">Apple TV+</option><option value="other">Other</option></select></div>
+          <div class="form-group"><label class="field-label">Status</label><select id="watch-status"><option value="planned">Planned</option><option value="watching">Watching</option><option value="done">Done</option></select></div>
+          <div class="form-group"><label class="field-label">Episode / Notes</label><input type="text" id="watch-notes" placeholder="Episode 3, Season 2…"></div>
+          <div class="btn-row"><button class="btn btn-primary btn-full" onclick="addWatch()">+ Add to List</button></div>
+        </div>
+        <div class="section-lbl">Your List</div>
+        <div class="ov-card" style="margin-bottom:8px;"><div id="watch-list"></div></div>
+      </div>
+      <div id="more-weekly" style="display:none;">
+        <div class="sec-title">Weekly Report</div>
+        <div class="week-nav">
+          <button class="btn btn-ghost" style="min-height:40px;padding:0 12px;font-size:13px;" onclick="shiftWeek(-1)">← Prev</button>
+          <div class="week-nav-lbl" id="week-lbl">This Week</div>
+          <button class="btn btn-ghost" style="min-height:40px;padding:0 12px;font-size:13px;" onclick="shiftWeek(1)">Next →</button>
+        </div>
+        <div class="week-strip" id="week-strip"></div>
+        <div class="section-lbl">Study Hours per Day</div>
+        <div class="bar-chart" id="study-bars" style="margin-bottom:16px;"></div>
+        <div class="section-lbl">Weekly Stats</div>
+        <div class="report-grid" id="report-grid"></div>
+        <div class="section-gap"></div>
+        <div class="section-lbl">Task Completion %</div>
+        <div class="bar-chart" id="task-bars" style="margin-bottom:16px;"></div>
+        <div class="section-lbl">Best Day</div>
+        <div class="ov-card" style="margin-bottom:8px;"><div id="best-day"></div></div>
+        <div style="height:8px;"></div>
+      </div>
+      <div id="more-history" style="display:none;">
+        <div class="sec-title">Day History</div>
+        <div id="history-list"></div>
+      </div>
+      <div id="more-settings" style="display:none;">
+        <div class="sec-title">⚙️ Data</div>
+        <div class="ov-card" style="margin-bottom:8px;">
+          <div class="backup-row">
+            <div class="backup-txt">
+              <div class="backup-title" style="color:var(--rose);">🗑 Clear Today's Data</div>
+              <div class="backup-sub">Resets only today. Cannot be undone.</div>
+            </div>
+            <button class="btn btn-del" style="font-size:12px;" onclick="clearToday()">Clear</button>
+          </div>
+        </div>
+        <div class="section-lbl">Storage Info</div>
+        <div class="ov-card" style="margin-bottom:8px;"><div id="storage-info"></div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active" onclick="switchTab('home',this)" id="nav-home">
+      <div class="nav-dot"></div><div class="nav-icon">◆</div><div class="nav-label">Home</div>
+    </button>
+    <button class="nav-btn" onclick="switchTab('studyplan',this);renderPlanQuickPick();" id="nav-studyplan">
+      <div class="nav-dot"></div><div class="nav-icon">📚</div><div class="nav-label">Study</div>
+    </button>
+    <button class="nav-btn" onclick="switchTab('habits',this)" id="nav-habits">
+      <div class="nav-dot"></div><div class="nav-icon">🎯</div><div class="nav-label">Habits</div>
+    </button>
+    <button class="nav-btn" onclick="switchTab('more',this);renderWatch();" id="nav-more">
+      <div class="nav-dot"></div><div class="nav-icon">▶</div><div class="nav-label">More</div>
+    </button>
+  </nav>
+
+  <div class="pwa-banner" id="pwa-banner">
+    <div class="pwa-banner-txt"><strong>📲 Add to Home Screen</strong>Install for offline access.</div>
+    <button class="btn btn-primary" style="min-height:36px;font-size:13px;padding:0 14px;flex-shrink:0;" onclick="pwaTriggerInstall()">Install</button>
+    <button class="pwa-x" onclick="dismissPwaBanner()">✕</button>
+  </div>
+
+  <div class="edit-backdrop" id="edit-backdrop" onclick="closeEdit()"></div>
+  <div class="edit-sheet" id="edit-sheet">
+    <div class="edit-sheet-handle"></div>
+    <div class="edit-sheet-header">
+      <div class="edit-sheet-title" id="edit-sheet-title">Edit</div>
+      <button class="edit-close-btn" onclick="closeEdit()">✕</button>
+    </div>
+    <div class="edit-sheet-body" id="edit-sheet-body"></div>
+    <div class="edit-actions">
+      <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
+      <button class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── PWA ───────────────────────────────────────────────────────────────────────
+(function(){
+  const manifest={name:"My Daily Planner",short_name:"Planner",start_url:"./",display:"standalone",background_color:"#040403",theme_color:"#040403",orientation:"portrait-primary"};
+  const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
+  document.getElementById('pwa-manifest').href=URL.createObjectURL(blob);
+})();
+(function(){
+  const sw=`const C='dp-v5';self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{if(res.ok){const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));}return res;}).catch(()=>caches.match(e.request))));});`;
+  if('serviceWorker' in navigator){const b=new Blob([sw],{type:'application/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b),{scope:'./'}).catch(()=>{});}
+})();
+let _deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();_deferredPrompt=e;if(!localStorage.getItem('pwa-dismissed'))setTimeout(()=>document.getElementById('pwa-banner').classList.add('show'),2000);});
+function pwaTriggerInstall(){dismissPwaBanner();if(_deferredPrompt){_deferredPrompt.prompt();_deferredPrompt=null;}}
+function dismissPwaBanner(){document.getElementById('pwa-banner').classList.remove('show');localStorage.setItem('pwa-dismissed','1');}
+window.addEventListener('appinstalled',()=>{document.getElementById('pwa-banner').classList.remove('show');});
+
+// ── THEME ─────────────────────────────────────────────────────────────────────
+let _isLight=false;
+function toggleTheme(){
+  _isLight=!_isLight;
+  applyTheme();
+  localStorage.setItem('dp-theme',_isLight?'light':'dark');
+}
+function applyTheme(){
+  document.body.classList.toggle('light',_isLight);
+  document.getElementById('theme-toggle').textContent=_isLight?'🌙':'☀️';
+  document.getElementById('theme-toggle').title=_isLight?'Switch to dark mode':'Switch to light mode';
+  // Fix date input color-scheme
+  document.querySelectorAll('input[type="date"]').forEach(el=>{
+    el.style.colorScheme=_isLight?'light':'dark';
+  });
+}
+(function(){
+  const saved=localStorage.getItem('dp-theme');
+  if(saved==='light'){_isLight=true;}
+})();
+
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const STORE='dp6_day_', META_K='dp6_meta';
+let meta={streak:0,habits:[],plans:[],courses:['CSEB']};
+let data=emptyDay(), currentKey=todayKey();
+let _selectedPlanId=null;
+
+function emptyDay(){return{goal:{hours:6,label:''},sessions:[],schedule:[],activities:[],watchlist:[],habits:[],mood:'',moodEmoji:'',journal:'',rating:0};}
+function todayKey(){const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function pad(n){return String(n).padStart(2,'0');}
+function addDays(k,n){const d=keyToDate(k);d.setDate(d.getDate()+n);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function keyToDate(k){const[y,m,d]=k.split('-');return new Date(+y,+m-1,+d);}
+function fmtKey(k){if(!k)return '';const d=keyToDate(k);return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]+', '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getDate()+' '+d.getFullYear();}
+
+function loadMeta(){
+  try{
+    const s=localStorage.getItem(META_K);
+    if(s){
+      meta=JSON.parse(s);
+      if(!meta.plans)meta.plans=[];
+      if(!meta.courses||!meta.courses.length)meta.courses=['CSEB'];
+      else if(!meta.courses.includes('CSEB'))meta.courses.unshift('CSEB');
+    }
+  }catch(e){}
+}
+function saveMeta(){try{localStorage.setItem(META_K,JSON.stringify(meta));}catch(e){showStorageError();}}
+
+function loadDay(k){
+  try{
+    const s=localStorage.getItem(STORE+k);
+    if(s){data=JSON.parse(s);if(!data.habits)data.habits=[];}
+    else{
+      data=emptyDay();
+      const prev=getDayData(addDays(k,-1));
+      if(prev&&prev.goal)data.goal=JSON.parse(JSON.stringify(prev.goal));
+    }
+    meta.habits.forEach(mh=>{if(!data.habits.find(h=>h.id===mh.id))data.habits.push({id:mh.id,name:mh.name,done:false});});
+    data.habits.forEach(dh=>{const mh=meta.habits.find(x=>x.id===dh.id);if(mh)dh.name=mh.name;});
+    data.habits=data.habits.filter(dh=>meta.habits.some(mh=>mh.id===dh.id));
+  }catch(e){data=emptyDay();}
+}
+function saveDay(secs){
+  try{localStorage.setItem(STORE+currentKey,JSON.stringify(data));}
+  catch(e){showStorageError();return;}
+  updateStreak();render(secs);
+}
+function getDayData(k){try{const s=localStorage.getItem(STORE+k);return s?JSON.parse(s):null;}catch(e){return null;}}
+function getAllDayKeys(){const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(STORE))keys.push(k.replace(STORE,''));}return keys.sort().reverse();}
+
+let _storageWarned=false;
+function showStorageError(){if(_storageWarned)return;_storageWarned=true;alert('⚠️ Storage full or unavailable.');}
+
+function updateStreak(){
+  let streak=0,check=todayKey();
+  while(true){const d=getDayData(check);if(d&&(d.sessions.length>0||d.activities.some(a=>a.done)||(d.habits&&d.habits.some(h=>h.done)))){streak++;check=addDays(check,-1);}else break;}
+  meta.streak=streak;saveMeta();
+  document.getElementById('streak-pill').textContent='🔥 '+streak+(streak===1?' day':' days');
+}
+
+// ── RENDER DISPATCHER ─────────────────────────────────────────────────────────
+function render(secs){
+  const all=!secs,has=s=>all||secs.includes(s);
+  if(has('sessions'))   renderSessions();
+  if(has('schedule'))   renderSchedule();
+  if(has('activities')) renderActivities();
+  if(has('habits'))     renderHabits();
+  if(has('watch'))      renderWatch();
+  if(has('overview')||has('plans')) renderOverview();
+  if(all||has('mood'))  restoreMood();
+  if(all||has('rating'))restoreRating();
+  if(all||has('journal'))restoreJournal();
+  if(has('score')||has('overview')||all) renderScore();
+  if(has('sessions')||has('plans')||all) renderStudyStatBar();
+}
+function renderAll(){render(null);}
+
+// ── TIME PICKERS ──────────────────────────────────────────────────────────────
+const HOURS=['12','1','2','3','4','5','6','7','8','9','10','11'];
+const MINS=['00','05','10','15','20','25','30','35','40','45','50','55'];
+function initTimePickers(){
+  document.querySelectorAll('.tp-wrap').forEach(tp=>{
+    const hs=tp.querySelector('.tp-h'),ms=tp.querySelector('.tp-m');
+    HOURS.forEach(h=>{const o=document.createElement('option');o.value=h;o.textContent=h;hs.appendChild(o);});
+    MINS.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;ms.appendChild(o);});
+  });
+}
+function getTime(tpId){const tp=document.getElementById(tpId);if(!tp)return '';const h=tp.querySelector('.tp-h').value,m=tp.querySelector('.tp-m').value,ap=tp.querySelector('.tp-ap').value;if(!h||!m)return '';let hr=parseInt(h);if(ap==='PM'&&hr!==12)hr+=12;if(ap==='AM'&&hr===12)hr=0;return pad(hr)+':'+m;}
+function resetTP(tpId){const tp=document.getElementById(tpId);if(!tp)return;tp.querySelector('.tp-h').value='';tp.querySelector('.tp-m').value='';tp.querySelector('.tp-ap').value='AM';}
+function fmt(t){if(!t)return '—';const[h,m]=t.split(':');const hr=parseInt(h);return (hr%12||12)+':'+m+(hr>=12?' PM':' AM');}
+function uid(){return Date.now()+Math.random().toString(36).slice(2,6);}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── COURSE MANAGEMENT ─────────────────────────────────────────────────────────
+function renderCourseSelect(selectId, currentVal){
+  const sel=document.getElementById(selectId);
+  if(!sel)return;
+  const prev=sel.value||currentVal||'';
+  sel.innerHTML='<option value="">— Select Course —</option>'+
+    meta.courses.map(c=>`<option value="${esc(c)}" ${c===prev?'selected':''}>${esc(c)}</option>`).join('');
+  if(prev)sel.value=prev;
+}
+
+function renderCoursesList(){
+  const el=document.getElementById('courses-list');
+  if(!el)return;
+  if(!meta.courses.length){el.innerHTML=emptyHTML('📚','No courses yet');return;}
+  el.innerHTML=meta.courses.map(c=>`<div class="mini-list-item">
+    <div class="mli-left">📗 ${esc(c)}</div>
+    <div class="mli-right">
+      ${c!=='CSEB'?`<button class="btn-del" style="font-size:11px;min-height:28px;padding:0 10px;" onclick="deleteCourse('${esc(c)}')">✕</button>`:'<span style="font-size:11px;color:var(--text3);">default</span>'}
+    </div>
+  </div>`).join('');
+}
+
+function showAddCourse(){
+  document.getElementById('course-add-row').style.display='flex';
+  document.getElementById('new-course-input').focus();
+}
+function cancelAddCourse(){
+  document.getElementById('course-add-row').style.display='none';
+  document.getElementById('new-course-input').value='';
+}
+function saveNewCourse(){
+  const name=(document.getElementById('new-course-input').value||'').trim();
+  if(!name){alert('Enter a course name.');return;}
+  if(meta.courses.some(c=>c.toLowerCase()===name.toLowerCase())){alert('Course already exists.');return;}
+  meta.courses.push(name);
+  saveMeta();
+  cancelAddCourse();
+  renderCourseSelect('plan-course','');
+  renderCoursesList();
+}
+function deleteCourse(name){
+  if(!confirm(`Delete course "${name}"? Plans linked to it will retain the name but lose the course tag.`))return;
+  meta.courses=meta.courses.filter(c=>c!==name);
+  saveMeta();
+  renderCourseSelect('plan-course','');
+  renderCoursesList();
+}
+
+// ── GOAL PLAN DROPDOWN ────────────────────────────────────────────────────────
+function renderGoalPlanDropdown(){
+  const sel=document.getElementById('goal-plan-dropdown');
+  if(!sel)return;
+  const activePlans=meta.plans.filter(p=>daysUntil(p.date)>=0);
+  sel.innerHTML='<option value="">— Select a Plan —</option>'+
+    activePlans.map(p=>{
+      const d=daysUntil(p.date);
+      const dLabel=d===0?'today':d+'d left';
+      return `<option value="${p.id}" ${_selectedPlanId===p.id?'selected':''}>${esc(p.name)} (${dLabel})</option>`;
+    }).join('');
+}
+
+function onGoalPlanDropdownChange(planId){
+  _selectedPlanId=planId||null;
+  const sel=document.getElementById('goal-plan-dropdown');
+  if(sel)sel.value=planId||'';
+  syncGoalLabelFromPlan(_selectedPlanId);
+  if(_selectedPlanId)saveDay(['overview']);
+  renderPlanQuickPick();
+  updateLinkedPlanPreview();
+  updateGoalPlanBanner();
+}
+
+// ── GOAL ↔ PLAN SYNC ──────────────────────────────────────────────────────────
+function syncGoalLabelFromPlan(planId){
+  const lEl=document.getElementById('goal-label');
+  if(!lEl)return;
+  if(planId){
+    const p=meta.plans.find(x=>x.id===planId);
+    if(p){lEl.value=p.name;data.goal.label=p.name;}
+  } else {
+    const wasPlan=meta.plans.some(p=>p.name===data.goal.label);
+    if(wasPlan){lEl.value='';data.goal.label='';}
+  }
+  updateGoalPlanBanner();
+}
+
+function syncPlanFromGoalLabel(label){
+  const lbl=(label||'').trim().toLowerCase();
+  if(lbl){
+    const match=meta.plans.find(p=>p.name.toLowerCase()===lbl&&daysUntil(p.date)>=0);
+    if(match&&match.id!==_selectedPlanId){
+      _selectedPlanId=match.id;
+      renderGoalPlanDropdown();
+      renderPlanQuickPick();
+      updateLinkedPlanPreview();
+      return;
+    }
+  }
+  if(!lbl&&_selectedPlanId){
+    const curPlan=meta.plans.find(p=>p.id===_selectedPlanId);
+    if(curPlan&&data.goal.label===curPlan.name){
+      _selectedPlanId=null;
+      renderGoalPlanDropdown();
+      renderPlanQuickPick();
+      updateLinkedPlanPreview();
+    }
+  }
+  updateGoalPlanBanner();
+}
+
+function updateGoalPlanBanner(){
+  const banner=document.getElementById('goal-plan-link-banner');
+  const hint=document.getElementById('goal-label-plan-hint');
+  if(!banner)return;
+  if(_selectedPlanId){
+    const p=meta.plans.find(x=>x.id===_selectedPlanId);
+    if(p){
+      const d=daysUntil(p.date);
+      const daysStr=d===0?'due today':d>0?d+'d left':Math.abs(d)+'d overdue';
+      document.getElementById('goal-plan-link-text').textContent=
+        'Sessions will be added to "'+p.name+'" · '+daysStr;
+      banner.style.display='flex';
+      if(hint)hint.style.display='flex';
+      return;
+    }
+  }
+  banner.style.display='none';
+  if(hint)hint.style.display='none';
+}
+
+// ── PLANS DATA HELPERS ────────────────────────────────────────────────────────
+function getPlanSessions(planId){
+  const result=[];
+  getAllDayKeys().forEach(k=>{
+    const d=getDayData(k);
+    if(!d||!d.sessions)return;
+    d.sessions.forEach(s=>{if(s.planId===planId)result.push({...s,dayKey:k});});
+  });
+  data.sessions.forEach(s=>{
+    if(s.planId===planId&&!result.find(r=>r.id===s.id))result.push({...s,dayKey:currentKey});
+  });
+  return result.sort((a,b)=>a.dayKey.localeCompare(b.dayKey));
+}
+function getPlanTotalHours(planId){return Math.round(getPlanSessions(planId).reduce((sum,s)=>sum+s.duration,0)*100)/100;}
+function daysUntil(dateStr){const target=new Date(dateStr+'T00:00:00');const today=new Date();today.setHours(0,0,0,0);return Math.round((target-today)/(1000*60*60*24));}
+function fmtPlanDate(dateStr){const d=new Date(dateStr+'T00:00:00');return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();}
+
+// ── PLAN QUICK-PICK ───────────────────────────────────────────────────────────
+function renderPlanQuickPick(){
+  const scroll=document.getElementById('plan-pick-scroll');
+  if(!scroll)return;
+  const activePlans=meta.plans.filter(p=>daysUntil(p.date)>=0);
+  let html=`<div class="plan-pick-card no-plan ${!_selectedPlanId?'selected':''}" id="ppc-none" onclick="selectPlanPick(null)">No plan</div>`;
+  activePlans.forEach(p=>{
+    const days=daysUntil(p.date);
+    const hrs=getPlanTotalHours(p.id);
+    const pct=p.targetHours?Math.min(100,Math.round((hrs/p.targetHours)*100)):null;
+    const daysCls=days<=3?'ppd-soon':pct===100?'ppd-done':'ppd-ok';
+    const daysLbl=days===0?'Today!':days+'d left';
+    const isSelected=_selectedPlanId===p.id;
+    html+=`<div class="plan-pick-card ${isSelected?'selected':''}" onclick="selectPlanPick('${p.id}')">
+      <div class="plan-pick-name">${esc(p.name)}</div>
+      <div class="plan-pick-meta">
+        <span class="plan-pick-days ${daysCls}">${daysLbl}</span>
+        <span>${hrs}h${p.targetHours?' / '+p.targetHours+'h':''}</span>
+      </div>
+    </div>`;
+  });
+  scroll.innerHTML=html;
+  const dl=document.getElementById('plan-names-list');
+  if(dl){dl.innerHTML=activePlans.map(p=>`<option value="${esc(p.name)}">`).join('');}
+  const wrap=document.getElementById('plan-quickpick-wrap');
+  if(wrap)wrap.style.display=activePlans.length?'':'none';
+  renderGoalPlanDropdown();
+  updateLinkedPlanPreview();
+  updateGoalPlanBanner();
+}
+
+function selectPlanPick(id){
+  _selectedPlanId=id;
+  syncGoalLabelFromPlan(id);
+  renderGoalPlanDropdown();
+  if(id)saveDay(['overview']);
+  renderPlanQuickPick();
+  updateLinkedPlanPreview();
+}
+
+function updateLinkedPlanPreview(){
+  const el=document.getElementById('linked-plan-preview');
+  if(!el)return;
+  if(!_selectedPlanId){el.classList.remove('show');return;}
+  const p=meta.plans.find(x=>x.id===_selectedPlanId);
+  if(!p){el.classList.remove('show');return;}
+  const hrs=getPlanTotalHours(p.id);
+  const pct=p.targetHours?Math.min(100,Math.round((hrs/p.targetHours)*100)):null;
+  const days=daysUntil(p.date);
+  document.getElementById('lpp-name').textContent=p.name;
+  document.getElementById('lpp-days').textContent=days===0?'Due today!':days>0?days+'d left':Math.abs(days)+'d overdue';
+  document.getElementById('lpp-hrs-label').textContent=hrs+'h logged'+(p.targetHours?' of '+p.targetHours+'h':'');
+  document.getElementById('lpp-pct').textContent=pct!==null?pct+'%':'';
+  document.getElementById('lpp-fill').style.width=(pct||0)+'%';
+  el.classList.add('show');
+}
+
+// ── STUDY STAT BAR ────────────────────────────────────────────────────────────
+function renderStudyStatBar(){
+  const hrs=sumHours(data.sessions);
+  const activePlans=meta.plans.filter(p=>daysUntil(p.date)>=0).length;
+  const el1=document.getElementById('sp-hrs-today');
+  const el2=document.getElementById('sp-goal-val');
+  const el3=document.getElementById('sp-sess-count');
+  const el4=document.getElementById('sp-active-plans');
+  if(el1)el1.textContent=hrs+'h';
+  if(el2)el2.textContent=data.goal.hours+'h';
+  if(el3)el3.textContent=data.sessions.length;
+  if(el4)el4.textContent=activePlans;
+}
+
+// ── PLANS CRUD ────────────────────────────────────────────────────────────────
+function addPlan(){
+  const name=document.getElementById('plan-name').value.trim();
+  const date=document.getElementById('plan-date').value;
+  if(!name||!date){alert('Enter a plan name and target date.');return;}
+  const hours=parseFloat(document.getElementById('plan-hours').value)||0;
+  const notes=document.getElementById('plan-notes').value.trim();
+  const course=document.getElementById('plan-course').value||'';
+  meta.plans.push({id:uid(),name,date,targetHours:hours,notes,course,createdAt:todayKey()});
+  saveMeta();
+  document.getElementById('plan-name').value='';
+  document.getElementById('plan-date').value='';
+  document.getElementById('plan-hours').value='';
+  document.getElementById('plan-notes').value='';
+  document.getElementById('plan-course').value='';
+  renderPlans();
+  renderCoursesList();
+  renderOverview();
+  renderPlanQuickPick();
+  renderStudyStatBar();
+}
+
+function deletePlan(id){
+  if(!confirm('Delete this plan? Sessions linked to it will remain but lose the link.'))return;
+  meta.plans=meta.plans.filter(p=>p.id!==id);
+  if(_selectedPlanId===id){
+    _selectedPlanId=null;
+    const lEl=document.getElementById('goal-label');
+    if(lEl&&data.goal.label){lEl.value='';data.goal.label='';}
+    updateGoalPlanBanner();
+  }
+  saveMeta();
+  renderPlans();
+  renderOverview();
+  renderPlanQuickPick();
+  renderStudyStatBar();
+}
+
+function renderPlans(){
+  const el=document.getElementById('plans-list-container');
+  if(!el)return;
+  renderCourseSelect('plan-course','');
+  renderCoursesList();
+  if(!meta.plans.length){el.innerHTML=emptyHTML('📋','No plans yet. Create one to track exam prep or any goal!');return;}
+  const sorted=[...meta.plans].sort((a,b)=>{
+    const da=daysUntil(a.date),db=daysUntil(b.date);
+    if(da>=0&&db>=0)return da-db;
+    if(da>=0)return -1;
+    if(db>=0)return 1;
+    return db-da;
+  });
+  el.innerHTML=sorted.map(p=>{
+    const days=daysUntil(p.date);
+    const totalHrs=getPlanTotalHours(p.id);
+    const sessions=getPlanSessions(p.id);
+    const pct=p.targetHours?Math.min(100,Math.round((totalHrs/p.targetHours)*100)):null;
+    const isOverdue=days<0,isToday=days===0,isDone=pct!==null&&pct>=100;
+    let countdownChip='';
+    if(isDone)countdownChip=`<span class="plan-chip pc-done">✓ Goal reached</span>`;
+    else if(isOverdue)countdownChip=`<span class="plan-chip pc-past">${Math.abs(days)}d ago</span>`;
+    else if(isToday)countdownChip=`<span class="plan-chip pc-today soon">📅 Today!</span>`;
+    else if(days<=3)countdownChip=`<span class="plan-chip pc-countdown soon">⚠️ ${days}d left</span>`;
+    else countdownChip=`<span class="plan-chip pc-countdown">${days}d left</span>`;
+    const hrsChip=`<span class="plan-chip pc-hrs">📚 ${totalHrs}h${p.targetHours?' / '+p.targetHours+'h':' logged'}</span>`;
+    const courseChip=p.course?`<span class="plan-chip pc-course">🎓 ${esc(p.course)}</span>`:'';
+    const recentSessions=sessions.slice(-3).reverse();
+    const sessHTML=recentSessions.length?`<div class="plan-sessions">${recentSessions.map(s=>`<div class="plan-session-row"><span class="plan-session-left">${esc(s.subject)}${s.notes?' · '+esc(s.notes):''}</span><span class="plan-session-right">${s.duration}h</span><span class="plan-session-date">${fmtKey(s.dayKey).split(',')[0]}</span></div>`).join('')}${sessions.length>3?`<div style="padding:6px 0;font-size:11px;color:var(--text3);">+${sessions.length-3} more session${sessions.length-3>1?'s':''}</div>`:''}</div>`:'';
+    const isSelected=_selectedPlanId===p.id;
+    return `<div class="plan-card" style="${isSelected?'border-left:3px solid var(--amber);':''}">
+      <div class="plan-card-inner">
+        <div class="plan-top">
+          <div class="plan-name">${esc(p.name)}</div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button class="btn-edit" onclick="editPlan('${p.id}')">✏️</button>
+            <button class="btn-del" onclick="deletePlan('${p.id}')">✕</button>
+          </div>
+        </div>
+        ${p.notes?`<div class="plan-note">${esc(p.notes)}</div>`:''}
+        <div class="plan-badge-row">${countdownChip}${hrsChip}${courseChip}<span class="plan-chip pc-past">📅 ${fmtPlanDate(p.date)}</span></div>
+        ${pct!==null?`<div class="plan-prog-row"><span>Study Progress</span><span>${pct}%</span></div><div class="plan-prog-bar"><div class="plan-prog-fill ${isOverdue&&!isDone?'overdue':''}" style="width:${pct}%"></div></div>`:''}
+        ${sessHTML}
+        <div style="margin-top:8px;display:flex;gap:6px;">
+          <button class="btn btn-ghost" style="flex:1;font-size:12px;min-height:36px;" onclick="logSessionForPlan('${p.id}')">+ Log Session</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function logSessionForPlan(planId){
+  _selectedPlanId=planId;
+  syncGoalLabelFromPlan(planId);
+  saveDay(['overview']);
+  const btn=document.querySelector('#sec-studyplan .subnav-btn');
+  switchSubnav(btn,'sp-study');
+  renderPlanQuickPick();
+  document.getElementById('scroll-area').scrollTop=0;
+}
+
+function renderActivePlansOverview(){
+  const el=document.getElementById('ov-plans-list');
+  if(!el)return;
+  const active=meta.plans.filter(p=>daysUntil(p.date)>=0).sort((a,b)=>daysUntil(a.date)-daysUntil(b.date));
+  document.getElementById('ov-plans').textContent=active.length;
+  if(!active.length){el.innerHTML=emptyHTML('','No active plans');return;}
+  el.innerHTML=active.slice(0,3).map(p=>{
+    const d=daysUntil(p.date),h=getPlanTotalHours(p.id);
+    const pct=p.targetHours?Math.min(100,Math.round((h/p.targetHours)*100)):null;
+    return `<div class="mini-list-item">
+      <div class="mli-left">${esc(p.name)}${p.course?` <span style="font-size:10px;color:var(--teal);">· ${esc(p.course)}</span>`:''}</div>
+      <div class="mli-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+        <span style="font-size:11px;color:${d<=3?'var(--rose)':'var(--teal)'}">${d===0?'Today!':d+'d left'}</span>
+        ${pct!==null?`<span style="font-size:11px;color:var(--amber)">${h}h / ${p.targetHours}h</span>`:`<span style="font-size:11px;color:var(--text3)">${h}h logged</span>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── PLATFORMS ─────────────────────────────────────────────────────────────────
+const PLAT={
+  youtube:{label:'YouTube',svg:`<svg viewBox="0 0 120 84" xmlns="http://www.w3.org/2000/svg"><rect width="120" height="84" rx="20" fill="#FF0000"/><polygon points="47,22 47,62 82,42" fill="white"/></svg>`},
+  netflix:{label:'Netflix',svg:`<svg viewBox="0 0 56 80" xmlns="http://www.w3.org/2000/svg"><rect width="56" height="80" fill="#141414"/><path d="M8 4 L8 76 L22 72 L22 40 L32 72 L48 76 L48 4 L34 4 L34 36 L24 4 Z" fill="#E50914"/></svg>`},
+  jiohotstar:{label:'JioHotstar',svg:`<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="jhg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0A1B6E"/><stop offset="100%" stop-color="#1A2DA0"/></linearGradient></defs><rect width="80" height="80" rx="16" fill="url(#jhg)"/><polygon points="40,10 48,30 70,30 53,46 59,67 40,54 21,67 27,46 10,30 32,30" fill="#00D4FF" opacity="0.9"/><polygon points="40,16 46,31 64,31 51,43 56,61 40,51 24,61 29,43 16,31 34,31" fill="#FF6B00" opacity="0.85"/></svg>`},
+  zee5:{label:'Zee5',svg:`<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" rx="16" fill="#1A0A28"/><text x="40" y="34" font-family="Arial Black,Arial" font-size="28" font-weight="900" fill="#A855F7" text-anchor="middle">ZEE</text><text x="40" y="62" font-family="Arial Black,Arial" font-size="30" font-weight="900" fill="#C084FC" text-anchor="middle">5</text></svg>`},
+  sonyliv:{label:'Sony LIV',svg:`<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" rx="16" fill="#0A1E18"/><circle cx="40" cy="40" r="24" fill="none" stroke="#00C4A0" stroke-width="6"/><text x="40" y="47" font-family="Arial Black,Arial" font-size="18" font-weight="900" fill="#00C4A0" text-anchor="middle">LIV</text></svg>`},
+  prime:{label:'Prime Video',svg:`<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" rx="16" fill="#0A1222"/><text x="40" y="36" font-family="Arial" font-size="11" font-weight="700" fill="#00A8E1" text-anchor="middle" letter-spacing="1">prime</text><text x="40" y="52" font-family="Arial" font-size="9" font-weight="500" fill="#7DC8E8" text-anchor="middle" letter-spacing="2">VIDEO</text><path d="M20 60 Q40 72 60 60" stroke="#00A8E1" stroke-width="4" fill="none" stroke-linecap="round"/><polygon points="56,56 62,60 56,64" fill="#00A8E1"/></svg>`},
+  appletv:{label:'Apple TV+',svg:`<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" rx="16" fill="#111"/><path d="M40 18 C36 18 32 20 30 24 C26 24 20 28 21 36 C22 44 29 52 37 52 C39 52 40 51 40 51 C40 51 41 52 43 52 C51 52 58 44 59 36 C60 28 54 24 50 24 C48 20 44 18 40 18Z" fill="#F5F5F5"/><ellipse cx="37" cy="16" rx="4" ry="5" fill="#F5F5F5" transform="rotate(-15 37 16)"/><text x="40" y="70" font-family="Arial" font-size="10" font-weight="700" fill="#888" text-anchor="middle" letter-spacing="1">TV+</text></svg>`},
+  other:{label:'Other',svg:`<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" rx="16" fill="#0D0F1E"/><rect x="14" y="22" width="52" height="34" rx="5" stroke="#6B7DE8" stroke-width="4" fill="none"/><line x1="28" y1="56" x2="28" y2="66" stroke="#6B7DE8" stroke-width="4"/><line x1="52" y1="56" x2="52" y2="66" stroke="#6B7DE8" stroke-width="4"/><line x1="20" y1="66" x2="60" y2="66" stroke="#6B7DE8" stroke-width="4" stroke-linecap="round"/><polygon points="35,30 35,46 50,38" fill="#6B7DE8"/></svg>`}
+};
+function getPlat(k){return PLAT[k]||PLAT.other;}
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────────
+function switchTab(id,btn){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  btn.classList.add('active');
+  document.getElementById('scroll-area').scrollTop=0;
+}
+function switchSubnav(btn,showId){
+  const subnav=btn.closest('.subnav');
+  subnav.querySelectorAll('.subnav-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  subnav.parentElement.querySelectorAll(':scope > div:not(.subnav)').forEach(d=>d.style.display='none');
+  document.getElementById(showId).style.display='';
+}
+
+// ── MOOD / RATING / JOURNAL ───────────────────────────────────────────────────
+function setMood(e,l){data.mood=l;data.moodEmoji=e;restoreMood();saveDay(['overview','mood','score']);}
+function restoreMood(){document.querySelectorAll('.mood-btn').forEach(b=>b.classList.toggle('selected',b.dataset.mood===data.mood));}
+function setRating(n){data.rating=n;restoreRating();saveDay(['overview','rating','score']);}
+function restoreRating(){document.querySelectorAll('.star-btn').forEach(b=>b.classList.toggle('lit',parseInt(b.dataset.r)<=(data.rating||0)));}
+function saveJournal(){data.journal=document.getElementById('journal-text').value;saveDay(['overview']);const btn=document.querySelector('.journal-foot .btn-ghost');btn.textContent='✓';setTimeout(()=>btn.textContent='Save',1500);}
+function restoreJournal(){document.getElementById('journal-text').value=data.journal||'';}
+
+function saveGoal(){
+  data.goal.hours=parseFloat(document.getElementById('study-goal').value)||6;
+  data.goal.label=document.getElementById('goal-label').value;
+  syncPlanFromGoalLabel(data.goal.label);
+  saveDay(['sessions','overview','score']);
+}
+
+function sumHours(sessions){return Math.round(sessions.reduce((s,x)=>s+x.duration,0)*100)/100;}
+
+// ── SCORE ─────────────────────────────────────────────────────────────────────
+function calcScore(){
+  const hrs=sumHours(data.sessions),goal=data.goal.hours||6;
+  const studyPct=Math.min(1,hrs/goal);
+  const tasksAll=data.activities.length,tasksDone=data.activities.filter(a=>a.done).length;
+  const taskPct=tasksAll?tasksDone/tasksAll:0;
+  const habitsAll=data.habits.length,habitsDone=data.habits.filter(h=>h.done).length;
+  const habitPct=habitsAll?habitsDone/habitsAll:0;
+  const ratingPct=(data.rating||0)/5;
+  return{score:Math.round(studyPct*40+taskPct*30+habitPct*20+ratingPct*10),studyPct,taskPct,habitPct,ratingPct};
+}
+function renderScore(){
+  const{score,studyPct,taskPct,habitPct,ratingPct}=calcScore();
+  const ring=document.getElementById('score-ring-dash');
+  ring.style.strokeDashoffset=(188.5*(1-score/100)).toFixed(1);
+  ring.style.stroke=score>=80?'var(--green)':score>=60?'var(--teal)':score>=40?'var(--amber)':'var(--rose)';
+  document.getElementById('score-num').textContent=score;
+  const[label,msg]=score>=90?['Outstanding 🏆','Absolutely crushing it today!']:score>=75?['Excellent 🔥','Strong day! Push a bit more.']:score>=60?['On Track 💪','Solid progress. Keep pushing.']:score>=40?['Getting There 🌱','Focus on habits or tasks to boost.']:score>0?['Early Days ☕','Log more activity to build momentum.']:['New Day ✨','Log a session or complete a task to begin.'];
+  document.getElementById('score-label').textContent=label;
+  document.getElementById('score-msg').textContent=msg;
+  const set=(id,vid,p)=>{document.getElementById(id).style.width=(p*100).toFixed(0)+'%';document.getElementById(vid).textContent=Math.round(p*100)+'%';};
+  set('sb-study','sv-study',studyPct);set('sb-tasks','sv-tasks',taskPct);set('sb-habits','sv-habits',habitPct);set('sb-rating','sv-rating',ratingPct);
+}
+
+// ── SESSIONS ──────────────────────────────────────────────────────────────────
+function addSession(){
+  const sub=document.getElementById('sess-subject').value.trim();
+  const dur=parseFloat(document.getElementById('sess-dur').value);
+  if(!sub||!dur||dur<=0){alert('Enter subject and duration.');return;}
+  const planId=_selectedPlanId||null;
+  data.sessions.push({id:uid(),subject:sub,duration:dur,time:getTime('tp-sess'),planId,notes:document.getElementById('sess-notes').value.trim()});
+  data.sessions.sort((a,b)=>{if(!a.time&&!b.time)return 0;if(!a.time)return 1;if(!b.time)return-1;return a.time.localeCompare(b.time);});
+  document.getElementById('sess-subject').value='';
+  document.getElementById('sess-dur').value='';
+  document.getElementById('sess-notes').value='';
+  resetTP('tp-sess');
+  saveDay(['sessions','overview','score']);
+  renderPlanQuickPick();
+  if(document.getElementById('sp-plans')&&document.getElementById('sp-plans').style.display!=='none')renderPlans();
+}
+
+function isOverlap(start,end,excludeId){
+  const newEnd=end||start;
+  return data.schedule.some(s=>{
+    if(excludeId&&s.id===excludeId)return false;
+    const sEnd=s.end||s.start;
+    return!(newEnd<=s.start||start>=sEnd);
+  });
+}
+function addSchedule(){
+  const title=document.getElementById('sch-title').value.trim();
+  const start=getTime('tp-sch-start'),end=getTime('tp-sch-end');
+  if(!title||!start){alert('Enter title and start time.');return;}
+  if(isOverlap(start,end,null)){alert('⚠️ Time overlaps an existing block.');return;}
+  data.schedule.push({id:uid(),start,end,type:document.getElementById('sch-type').value,title,desc:document.getElementById('sch-desc').value.trim()});
+  data.schedule.sort((a,b)=>a.start.localeCompare(b.start));
+  document.getElementById('sch-title').value='';document.getElementById('sch-desc').value='';
+  resetTP('tp-sch-start');resetTP('tp-sch-end');
+  saveDay(['schedule','overview']);
+}
+function addActivity(){
+  const name=document.getElementById('act-name').value.trim();
+  if(!name){alert('Enter an activity name.');return;}
+  data.activities.push({id:uid(),name,time:getTime('tp-act'),priority:document.getElementById('act-priority').value,notes:document.getElementById('act-notes').value.trim(),done:false});
+  document.getElementById('act-name').value='';document.getElementById('act-notes').value='';resetTP('tp-act');
+  saveDay(['activities','overview','score']);
+}
+function addHabit(){
+  const name=document.getElementById('habit-name').value.trim();
+  if(!name){alert('Enter a habit name.');return;}
+  if(meta.habits.some(h=>h.name.toLowerCase()===name.toLowerCase())){alert('Habit already exists.');return;}
+  const id=uid();
+  meta.habits.push({id,name});saveMeta();
+  data.habits.push({id,name,done:false});
+  document.getElementById('habit-name').value='';
+  saveDay(['habits','overview','score']);
+}
+function toggleHabit(id){const h=data.habits.find(x=>x.id===id);if(h){h.done=!h.done;saveDay(['habits','overview','score']);}}
+function removeHabit(id){data.habits=data.habits.filter(x=>x.id!==id);meta.habits=meta.habits.filter(x=>x.id!==id);saveMeta();saveDay(['habits','overview','score']);}
+function addWatch(){
+  const title=document.getElementById('watch-title').value.trim();
+  if(!title){alert('Enter a title.');return;}
+  data.watchlist.push({id:uid(),title,platform:document.getElementById('watch-platform').value,status:document.getElementById('watch-status').value,notes:document.getElementById('watch-notes').value.trim()});
+  document.getElementById('watch-title').value='';document.getElementById('watch-notes').value='';
+  saveDay(['watch','overview']);
+}
+const _sectionMap={sessions:['sessions','overview','score'],schedule:['schedule','overview'],activities:['activities','overview','score'],watchlist:['watch','overview'],habits:['habits','overview','score']};
+function removeItem(arr,id){data[arr]=data[arr].filter(x=>x.id!==id);saveDay(_sectionMap[arr]||null);}
+function toggleDone(id){const a=data.activities.find(x=>x.id===id);if(a){a.done=!a.done;saveDay(['activities','overview','score']);}}
+function changeWatchStatus(id,val){const w=data.watchlist.find(x=>x.id===id);if(w){w.status=val;saveDay(['watch']);}}
+
+// ── RENDER FUNCTIONS ──────────────────────────────────────────────────────────
+function renderSessions(){
+  const hrs=sumHours(data.sessions),pct=Math.min(100,(hrs/data.goal.hours)*100).toFixed(0);
+  document.getElementById('study-prog-txt').textContent=hrs+'h / '+data.goal.hours+'h';
+  document.getElementById('study-prog-bar').style.width=pct+'%';
+  const gEl=document.getElementById('study-goal'),lEl=document.getElementById('goal-label');
+  if(document.activeElement!==gEl)gEl.value=data.goal.hours;
+  if(document.activeElement!==lEl)lEl.value=data.goal.label;
+  const el=document.getElementById('session-list');
+  if(!data.sessions.length){el.innerHTML=emptyHTML('📖','No sessions yet');return;}
+  el.innerHTML=data.sessions.map(s=>{
+    const plan=s.planId?meta.plans.find(p=>p.id===s.planId):null;
+    return `<div class="list-item">
+      <div class="item-bar bar-amber"></div>
+      <div class="item-time">${s.time?fmt(s.time):'—'}</div>
+      <div class="item-info">
+        <div class="item-title">${esc(s.subject)}</div>
+        <div class="item-sub">${s.duration}h${plan?` · <span style="color:var(--amber)">📋 ${esc(plan.name)}</span>`:''}${s.notes?' · '+esc(s.notes):''}</div>
+      </div>
+      <button class="btn-edit" onclick="editSession('${s.id}')">✏️</button>
+      <button class="btn-del" style="margin-left:4px;" onclick="removeItem('sessions','${s.id}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function renderSchedule(){
+  const el=document.getElementById('schedule-list');
+  if(!data.schedule.length){el.innerHTML=emptyHTML('🗓','No blocks yet');return;}
+  const barC={study:'bar-amber',break:'bar-teal',activity:'bar-indigo',watch:'bar-rose'};
+  const badC={study:'badge-amber',break:'badge-teal',activity:'badge-indigo',watch:'badge-rose'};
+  el.innerHTML=data.schedule.map(s=>`<div class="list-item">
+    <div class="item-bar ${barC[s.type]||'bar-amber'}"></div>
+    <div class="item-time">${fmt(s.start)}${s.end?' – '+fmt(s.end):''}</div>
+    <div class="item-info"><div class="item-title">${esc(s.title)}</div>${s.desc?'<div class="item-sub">'+esc(s.desc)+'</div>':''}</div>
+    <span class="badge ${badC[s.type]||'badge-amber'}">${s.type}</span>
+    <button class="btn-edit" style="margin-left:4px;" onclick="editSchedule('${s.id}')">✏️</button>
+    <button class="btn-del" style="margin-left:4px;" onclick="removeItem('schedule','${s.id}')">✕</button>
+  </div>`).join('');
+}
+
+function renderActivities(){
+  const el=document.getElementById('activity-list');
+  if(!data.activities.length){el.innerHTML=emptyHTML('✅','No activities yet');return;}
+  el.innerHTML=data.activities.map(a=>`<div class="act-card ${a.done?'completed':''}">
+    <div class="act-top"><div class="act-name">${esc(a.name)}${a.time?'<div style="font-size:12px;color:var(--text3);font-weight:400;">@ '+fmt(a.time)+'</div>':''}</div><div class="priority-dot dot-${a.priority}"></div></div>
+    ${a.notes?'<div class="act-note">'+esc(a.notes)+'</div>':''}
+    <div class="act-foot"><label class="check-row"><input type="checkbox" ${a.done?'checked':''} onchange="toggleDone('${a.id}')"> Done</label><div style="display:flex;gap:6px;"><button class="btn-edit" onclick="editActivity('${a.id}')">✏️</button><button class="btn-del" onclick="removeItem('activities','${a.id}')">✕</button></div></div>
+  </div>`).join('');
+}
+
+function renderHabits(){
+  const total=data.habits.length,done=data.habits.filter(h=>h.done).length;
+  document.getElementById('habit-prog-txt').textContent=done+' / '+total;
+  document.getElementById('habit-prog-bar').style.width=(total?Math.round((done/total)*100):0)+'%';
+  const el=document.getElementById('habit-list');
+  if(!data.habits.length){el.innerHTML=emptyHTML('🎯','Add habits to track daily');return;}
+  const allKeys=getAllDayKeys().sort();
+  el.innerHTML=data.habits.map(h=>{
+    let streak=0;
+    if(h.done){for(let i=allKeys.length-1;i>=0;i--){const d=getDayData(allKeys[i]);const dh=d&&d.habits?d.habits.find(x=>x.id===h.id):null;if(dh&&dh.done)streak++;else break;}}
+    return `<div class="habit-item">
+      <div class="hcheck ${h.done?'on':''}" onclick="toggleHabit('${h.id}')">${h.done?'✓':''}</div>
+      <div class="hname ${h.done?'done':''}">${esc(h.name)}</div>
+      ${streak>1?'<span class="hstreak">🔥 '+streak+'d</span>':''}
+      <button class="btn-edit" onclick="editHabit('${h.id}')">✏️</button>
+      <button class="btn-del" onclick="removeHabit('${h.id}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function renderWatch(){
+  const el=document.getElementById('watch-list');
+  if(!el)return;
+  if(!data.watchlist.length){el.innerHTML=emptyHTML('🎬','Nothing in your list yet');return;}
+  el.innerHTML=data.watchlist.map(w=>{
+    const p=getPlat(w.platform);
+    const sc={watching:'sw',planned:'sp',done:'sd'}[w.status]||'sp';
+    return `<div class="watch-item">
+      <div class="plat-icon">${p.svg}</div>
+      <div class="watch-info"><div class="watch-title">${esc(w.title)}</div><div class="watch-meta">${p.label}${w.notes?' · '+esc(w.notes):''}</div></div>
+      <select class="status-sel ${sc}" onchange="changeWatchStatus('${w.id}',this.value)">
+        <option value="planned" ${w.status==='planned'?'selected':''}>Planned</option>
+        <option value="watching" ${w.status==='watching'?'selected':''}>Watching</option>
+        <option value="done" ${w.status==='done'?'selected':''}>Done</option>
+      </select>
+      <button class="btn-edit" style="margin-left:4px;" onclick="editWatch('${w.id}')">✏️</button>
+      <button class="btn-del" style="margin-left:4px;" onclick="removeItem('watchlist','${w.id}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function renderOverview(){
+  const hrs=sumHours(data.sessions),done=data.activities.filter(a=>a.done).length;
+  const pct=Math.min(100,(hrs/data.goal.hours)*100).toFixed(0);
+  document.getElementById('ov-hrs').textContent=hrs+'h';
+  document.getElementById('ov-tasks').textContent=done+'/'+data.activities.length;
+  document.getElementById('ov-sched').textContent=data.schedule.length;
+  document.getElementById('ov-goal-txt').textContent=hrs+'h / '+data.goal.hours+'h';
+  document.getElementById('ov-goal-bar').style.width=pct+'%';
+  document.getElementById('ov-sched-list').innerHTML=data.schedule.slice(0,4).map(s=>`<div class="mini-list-item"><div class="mli-left">${esc(s.title)}</div><div class="mli-right">${s.start?fmt(s.start):'—'}</div></div>`).join('')||emptyHTML('','No schedule yet');
+  document.getElementById('ov-act-list').innerHTML=data.activities.filter(a=>!a.done).slice(0,4).map(a=>`<div class="mini-list-item"><div class="mli-left">${esc(a.name)}</div><div class="mli-right" style="font-size:12px;color:var(--text3)">${a.priority}</div></div>`).join('')||emptyHTML('','All done! 🎉');
+  document.getElementById('ov-sess-list').innerHTML=data.sessions.slice(0,4).map(s=>{
+    const plan=s.planId?meta.plans.find(p=>p.id===s.planId):null;
+    return `<div class="mini-list-item"><div class="mli-left">${esc(s.subject)}${plan?` <span style="font-size:11px;color:var(--amber)">· ${esc(plan.name)}</span>`:''}</div><div class="mli-right">${s.duration}h</div></div>`;
+  }).join('')||emptyHTML('','No sessions yet');
+  renderActivePlansOverview();
+}
+
+function emptyHTML(icon,txt){return `<div class="empty">${icon?'<div class="empty-icon">'+icon+'</div>':''}<div class="empty-txt">${txt}</div></div>`;}
+
+// ── WEEKLY REPORT ─────────────────────────────────────────────────────────────
+let weekOffset=0;
+const DAY_NAMES=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const MTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function getWeekKeys(offset){
+  const now=new Date(),mon=new Date(now);
+  mon.setDate(now.getDate()-((now.getDay()+6)%7)+offset*7);mon.setHours(0,0,0,0);
+  return Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());});
+}
+function shiftWeek(dir){weekOffset+=dir;renderWeekly();}
+
+function renderWeekly(){
+  const keys=getWeekKeys(weekOffset);
+  const d0=keyToDate(keys[0]),d6=keyToDate(keys[6]);
+  document.getElementById('week-lbl').textContent=MTHS[d0.getMonth()]+' '+d0.getDate()+' – '+MTHS[d6.getMonth()]+' '+d6.getDate()+', '+d6.getFullYear();
+  const today=todayKey();
+  document.getElementById('week-strip').innerHTML=keys.map((k,i)=>{
+    const d=getDayData(k);const hasData=d&&(d.sessions.length>0||d.activities.length>0);
+    return `<div class="wday ${k===today?'today':''} ${hasData?'has-data':''}"><div class="wday-n">${DAY_NAMES[i]}</div><div class="wday-d">${parseInt(k.split('-')[2])}</div></div>`;
+  }).join('');
+  let totalHrs=0,tasksDone=0,tasksAll=0,habitsDone=0,habitsAll=0,activeDays=0,totalRating=0,rDays=0;
+  const studyH=[],taskPct=[];let bestDay=null,bestHrs=0;
+  keys.forEach((k,i)=>{
+    const d=getDayData(k);
+    if(!d){studyH.push(0);taskPct.push(0);return;}
+    const dh=sumHours(d.sessions),done=d.activities.filter(a=>a.done).length,all=d.activities.length;
+    studyH.push(dh);taskPct.push(all?Math.round((done/all)*100):0);
+    totalHrs+=dh;tasksDone+=done;tasksAll+=all;
+    if(d.habits){habitsDone+=d.habits.filter(h=>h.done).length;habitsAll+=d.habits.length;}
+    if(dh>0||all>0)activeDays++;
+    if(d.rating){totalRating+=d.rating;rDays++;}
+    if(dh>bestHrs){bestHrs=dh;bestDay={name:DAY_NAMES[i],hrs:(Math.round(dh*100)/100).toFixed(1),done,all};}
+  });
+  const totalHrsDisp=(Math.round(totalHrs*100)/100).toFixed(1);
+  const avgHrs=activeDays?(Math.round((totalHrs/activeDays)*100)/100).toFixed(1):'0.0';
+  const taskR=tasksAll?Math.round((tasksDone/tasksAll)*100):0;
+  const habitR=habitsAll?Math.round((habitsDone/habitsAll)*100):0;
+  const avgR=rDays?(totalRating/rDays).toFixed(1):'—';
+  document.getElementById('report-grid').innerHTML=`
+    <div class="rstat rs-a"><div class="rstat-val">${totalHrsDisp}h</div><div class="rstat-lbl">Total Study</div></div>
+    <div class="rstat rs-t"><div class="rstat-val">${avgHrs}h</div><div class="rstat-lbl">Daily Avg</div></div>
+    <div class="rstat rs-i"><div class="rstat-val">${taskR}%</div><div class="rstat-lbl">Task Rate</div></div>
+    <div class="rstat rs-r"><div class="rstat-val">${activeDays}/7</div><div class="rstat-lbl">Active Days</div></div>
+    <div class="rstat rs-p"><div class="rstat-val">${habitR}%</div><div class="rstat-lbl">Habit Rate</div></div>
+    <div class="rstat rs-g"><div class="rstat-val">${avgR}</div><div class="rstat-lbl">Avg Rating</div></div>`;
+  const maxH=Math.max(...studyH,0.5);
+  document.getElementById('study-bars').innerHTML=studyH.map((h,i)=>`<div class="bar-col"><div class="bar-v">${h>0?h+'h':''}</div><div class="bar ${h>0?'filled':''} ${keys[i]===today?'today':''}" style="height:${Math.max(3,Math.round((h/maxH)*100))}%;"></div><div class="bar-day">${DAY_NAMES[i]}</div></div>`).join('');
+  const maxT=Math.max(...taskPct,1);
+  document.getElementById('task-bars').innerHTML=taskPct.map((p,i)=>`<div class="bar-col"><div class="bar-v">${p>0?p+'%':''}</div><div class="bar ${p>0?'filled':''} ${keys[i]===today?'today':''}" style="height:${Math.max(3,Math.round((p/maxT)*100))}%;"></div><div class="bar-day">${DAY_NAMES[i]}</div></div>`).join('');
+  document.getElementById('best-day').innerHTML=bestDay?`
+    <div class="mini-list-item"><div class="mli-left">Day</div><div class="mli-right">${bestDay.name}</div></div>
+    <div class="mini-list-item"><div class="mli-left">Study Time</div><div class="mli-right">${bestDay.hrs}h</div></div>
+    <div class="mini-list-item"><div class="mli-left">Tasks</div><div class="mli-right">${bestDay.done}/${bestDay.all}</div></div>`:emptyHTML('','No data this week yet');
+}
+
+// ── HISTORY ───────────────────────────────────────────────────────────────────
+function renderHistory(){
+  const keys=getAllDayKeys();
+  const el=document.getElementById('history-list');
+  if(!keys.length){el.innerHTML=emptyHTML('🗂','No history yet.');return;}
+  el.innerHTML=keys.map(k=>{
+    const d=getDayData(k);if(!d)return '';
+    const hrs=sumHours(d.sessions),done=d.activities.filter(a=>a.done).length;
+    const chips=[];
+    if(hrs>0)chips.push(`<span class="hchip hc-a">📚 ${hrs}h</span>`);
+    if(d.activities.length)chips.push(`<span class="hchip hc-t">✅ ${done}/${d.activities.length}</span>`);
+    if(d.schedule.length)chips.push(`<span class="hchip hc-i">🕐 ${d.schedule.length}</span>`);
+    if(d.mood)chips.push(`<span class="hchip hc-m">${d.moodEmoji||''} ${d.mood}</span>`);
+    return `<div class="hist-card" onclick="toggleHistDetail('${k}')">
+      <div class="hist-head"><div class="hist-date">${fmtKey(k)}${k===todayKey()?' <span style="font-size:11px;color:var(--amber)">(Today)</span>':''}</div>${d.rating?'<div class="hist-rating">'+'★'.repeat(d.rating)+'</div>':''}</div>
+      <div class="hist-chips">${chips.join('')||'<span style="font-size:12px;color:var(--text3)">No data</span>'}</div>
+      <div class="hist-detail" id="hd-${k}">
+        ${d.sessions.length?'<div class="section-lbl" style="padding-top:10px;">Sessions</div>'+d.sessions.map(s=>{const pl=s.planId?meta.plans.find(p=>p.id===s.planId):null;return`<div class="mini-list-item"><div class="mli-left">${esc(s.subject)}${pl?' · <span style="color:var(--amber)">'+esc(pl.name)+'</span>':''}</div><div class="mli-right">${s.duration}h</div></div>`;}).join(''):''}
+        ${d.activities.length?'<div class="section-lbl">Activities</div>'+d.activities.map(a=>`<div class="mini-list-item"><div class="mli-left">${a.done?'✓ ':''}${esc(a.name)}</div><div class="mli-right" style="color:var(--text3);font-size:12px">${a.priority}</div></div>`).join(''):''}
+        ${d.journal?'<div class="hist-journal">📝 '+esc(d.journal)+'</div>':''}
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleHistDetail(k){const el=document.getElementById('hd-'+k);if(el)el.classList.toggle('open');}
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+function clearToday(){
+  if(!confirm('Clear all of today\'s data? Cannot be undone.'))return;
+  localStorage.removeItem(STORE+currentKey);
+  data=emptyDay();
+  meta.habits.forEach(mh=>data.habits.push({id:mh.id,name:mh.name,done:false}));
+  _selectedPlanId=null;
+  renderAll();renderSettings();renderPlanQuickPick();
+}
+function renderSettings(){
+  const keys=getAllDayKeys();let totalBytes=0;
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&(k.startsWith(STORE)||k===META_K))totalBytes+=(localStorage.getItem(k)||'').length*2;}
+  document.getElementById('storage-info').innerHTML=`
+    <div class="mini-list-item"><div class="mli-left">Days tracked</div><div class="mli-right">${keys.length}</div></div>
+    <div class="mini-list-item"><div class="mli-left">Storage used</div><div class="mli-right">${(totalBytes/1024).toFixed(1)} KB</div></div>
+    <div class="mini-list-item"><div class="mli-left">Habits defined</div><div class="mli-right">${meta.habits.length}</div></div>
+    <div class="mini-list-item"><div class="mli-left">Plans created</div><div class="mli-right">${meta.plans.length}</div></div>
+    <div class="mini-list-item"><div class="mli-left">Courses saved</div><div class="mli-right">${meta.courses.length}</div></div>
+    <div class="mini-list-item"><div class="mli-left">Current streak</div><div class="mli-right">${meta.streak} days</div></div>`;
+}
+
+// ── DATE & GREETING ───────────────────────────────────────────────────────────
+function initDate(){
+  const now=new Date();
+  document.getElementById('date-pill').textContent=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][now.getDay()]+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][now.getMonth()]+' '+now.getDate();
+  document.getElementById('header-sub').textContent=getDynamicGreeting(now);
+}
+function getDynamicGreeting(now){
+  const h=now.getHours(),day=now.getDay();
+  const seed=now.getDate()+now.getMonth()*31;
+  const pick=arr=>arr[seed%arr.length];
+  if(h>=5&&h<9)return 'Good morning — '+pick(['Early bird — you\'ve already won half the day.','Rise and make it count.','The quiet hours belong to you.','Best time to think clearly is right now.']);
+  if(h>=9&&h<12)return 'Good morning — '+pick(day===1?['New week, clean slate.','Set the tone for the week.']:['Stay in the flow.','Peak focus hours — protect them.','One deep session at a time.']);
+  if(h>=12&&h<14)return 'Good afternoon — '+pick(['Power through the afternoon dip.','Half the day left. Use it well.','Midday check-in — how\'s the plan holding up?']);
+  if(h>=14&&h<18)return 'Good afternoon — '+pick(day===5?['Finish strong before the weekend.','End the week with no regrets.']:['Steady progress beats bursts.','Afternoons are for execution.']);
+  if(h>=18&&h<21)return 'Good evening — '+pick(['Wind down with intention.','Reflect on today\'s wins.','Evening review — did today matter?']);
+  return (h>=21?'Good night':'Still up?')+' — '+pick(['Rest is productive too.','Tomorrow needs your best self.','Log today, plan tomorrow, sleep well.']);
+}
+
+// ── BOOTSTRAP ─────────────────────────────────────────────────────────────────
+loadMeta();
+loadDay(currentKey);
+
+// Restore _selectedPlanId
+(function(){
+  const lbl=(data.goal.label||'').trim().toLowerCase();
+  if(lbl){
+    const m=meta.plans.find(p=>p.name.toLowerCase()===lbl&&daysUntil(p.date)>=0);
+    if(m){_selectedPlanId=m.id;return;}
+  }
+  const linked=data.sessions.filter(s=>s.planId).sort((a,b)=>(b.time||'').localeCompare(a.time||''));
+  if(linked.length){
+    const pid=linked[0].planId;
+    if(meta.plans.find(p=>p.id===pid&&daysUntil(p.date)>=0))_selectedPlanId=pid;
+  }
+})();
+
+initDate();
+applyTheme();
+initTimePickers();
+updateStreak();
+renderAll();
+renderPlanQuickPick();
+renderCourseSelect('plan-course','');
+
+// ── EDIT MODAL ────────────────────────────────────────────────────────────────
+let _eid=null,_etype=null;
+function openEdit(){document.getElementById('edit-backdrop').classList.add('open');document.getElementById('edit-sheet').classList.add('open');}
+function closeEdit(){document.getElementById('edit-backdrop').classList.remove('open');document.getElementById('edit-sheet').classList.remove('open');_eid=null;_etype=null;}
+
+function editSession(id){
+  const s=data.sessions.find(x=>x.id===id);if(!s)return;
+  _eid=id;_etype='session';
+  document.getElementById('edit-sheet-title').textContent='Edit Session';
+  const planOpts='<option value="">— No plan —</option>'+meta.plans.map(p=>`<option value="${p.id}" ${s.planId===p.id?'selected':''}>${esc(p.name)}</option>`).join('');
+  document.getElementById('edit-sheet-body').innerHTML=`
+    <div class="form-group"><label class="field-label">Subject</label><input type="text" id="ei-subject" value="${esc(s.subject)}"></div>
+    <div class="form-group"><label class="field-label">Duration (hours)</label><input type="number" id="ei-dur" value="${s.duration}" min="0.25" max="24" step="0.25"></div>
+    <div class="form-group"><label class="field-label">Time</label><input type="time" id="ei-time" value="${s.time||''}" style="font-size:16px;width:100%;background:var(--surf3);color:var(--text);border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:12px 14px;min-height:48px;-webkit-appearance:none;color-scheme:dark;"></div>
+    <div class="form-group"><label class="field-label">Link to Plan</label><select id="ei-plan">${planOpts}</select></div>
+    <div class="form-group"><label class="field-label">Notes</label><input type="text" id="ei-notes" value="${esc(s.notes||'')}"></div>`;
+  openEdit();
+}
+function editSchedule(id){
+  const s=data.schedule.find(x=>x.id===id);if(!s)return;
+  _eid=id;_etype='schedule';
+  document.getElementById('edit-sheet-title').textContent='Edit Schedule Block';
+  document.getElementById('edit-sheet-body').innerHTML=`
+    <div class="form-group"><label class="field-label">Title</label><input type="text" id="ei-title" value="${esc(s.title)}"></div>
+    <div class="form-group"><label class="field-label">Type</label><select id="ei-type"><option value="study" ${s.type==='study'?'selected':''}>Study</option><option value="break" ${s.type==='break'?'selected':''}>Break</option><option value="activity" ${s.type==='activity'?'selected':''}>Activity</option><option value="watch" ${s.type==='watch'?'selected':''}>Watch</option></select></div>
+    <div class="form-group"><label class="field-label">Start Time</label><input type="time" id="ei-start" value="${s.start||''}" style="font-size:16px;width:100%;background:var(--surf3);color:var(--text);border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:12px 14px;min-height:48px;-webkit-appearance:none;color-scheme:dark;"></div>
+    <div class="form-group"><label class="field-label">End Time</label><input type="time" id="ei-end" value="${s.end||''}" style="font-size:16px;width:100%;background:var(--surf3);color:var(--text);border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:12px 14px;min-height:48px;-webkit-appearance:none;color-scheme:dark;"></div>
+    <div class="form-group"><label class="field-label">Description</label><input type="text" id="ei-desc" value="${esc(s.desc||'')}"></div>`;
+  openEdit();
+}
+function editActivity(id){
+  const a=data.activities.find(x=>x.id===id);if(!a)return;
+  _eid=id;_etype='activity';
+  document.getElementById('edit-sheet-title').textContent='Edit Activity';
+  document.getElementById('edit-sheet-body').innerHTML=`
+    <div class="form-group"><label class="field-label">Activity Name</label><input type="text" id="ei-name" value="${esc(a.name)}"></div>
+    <div class="form-group"><label class="field-label">Priority</label><select id="ei-priority"><option value="high" ${a.priority==='high'?'selected':''}>High</option><option value="med" ${a.priority==='med'?'selected':''}>Medium</option><option value="low" ${a.priority==='low'?'selected':''}>Low</option></select></div>
+    <div class="form-group"><label class="field-label">Time</label><input type="time" id="ei-time" value="${a.time||''}" style="font-size:16px;width:100%;background:var(--surf3);color:var(--text);border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:12px 14px;min-height:48px;-webkit-appearance:none;color-scheme:dark;"></div>
+    <div class="form-group"><label class="field-label">Notes</label><input type="text" id="ei-notes" value="${esc(a.notes||'')}"></div>`;
+  openEdit();
+}
+function editHabit(id){
+  const h=data.habits.find(x=>x.id===id);if(!h)return;
+  _eid=id;_etype='habit';
+  document.getElementById('edit-sheet-title').textContent='Edit Habit';
+  document.getElementById('edit-sheet-body').innerHTML=`<div class="form-group"><label class="field-label">Habit Name</label><input type="text" id="ei-name" value="${esc(h.name)}"></div>`;
+  openEdit();
+}
+function editWatch(id){
+  const w=data.watchlist.find(x=>x.id===id);if(!w)return;
+  _eid=id;_etype='watch';
+  document.getElementById('edit-sheet-title').textContent='Edit Watch Item';
+  const platOpts=Object.keys(PLAT).map(k=>`<option value="${k}" ${w.platform===k?'selected':''}>${PLAT[k].label}</option>`).join('');
+  document.getElementById('edit-sheet-body').innerHTML=`
+    <div class="form-group"><label class="field-label">Title</label><input type="text" id="ei-title" value="${esc(w.title)}"></div>
+    <div class="form-group"><label class="field-label">Platform</label><select id="ei-platform">${platOpts}</select></div>
+    <div class="form-group"><label class="field-label">Status</label><select id="ei-status"><option value="planned" ${w.status==='planned'?'selected':''}>Planned</option><option value="watching" ${w.status==='watching'?'selected':''}>Watching</option><option value="done" ${w.status==='done'?'selected':''}>Done</option></select></div>
+    <div class="form-group"><label class="field-label">Episode / Notes</label><input type="text" id="ei-notes" value="${esc(w.notes||'')}"></div>`;
+  openEdit();
+}
+function editPlan(id){
+  const p=meta.plans.find(x=>x.id===id);if(!p)return;
+  _eid=id;_etype='plan';
+  document.getElementById('edit-sheet-title').textContent='Edit Plan';
+  const courseOpts='<option value="">— Select Course —</option>'+meta.courses.map(c=>`<option value="${esc(c)}" ${p.course===c?'selected':''}>${esc(c)}</option>`).join('');
+  document.getElementById('edit-sheet-body').innerHTML=`
+    <div class="form-group"><label class="field-label">Plan Name</label><input type="text" id="ei-pname" value="${esc(p.name)}"></div>
+    <div class="form-group"><label class="field-label">Target Date</label><input type="date" id="ei-pdate" value="${p.date}" style="color-scheme:${_isLight?'light':'dark'};"></div>
+    <div class="form-group"><label class="field-label">Target Hours</label><input type="number" id="ei-phours" value="${p.targetHours||''}" min="1" max="500" step="0.5" placeholder="e.g. 40"></div>
+    <div class="form-group"><label class="field-label">Course Name</label><select id="ei-pcourse">${courseOpts}</select></div>
+    <div class="form-group"><label class="field-label">Notes</label><textarea id="ei-pnotes" style="min-height:70px;">${esc(p.notes||'')}</textarea></div>`;
+  openEdit();
+}
+
+function g(id){const el=document.getElementById(id);return el?el.value.trim():'';}
+function saveEdit(){
+  if(!_eid||!_etype){closeEdit();return;}
+  if(_etype==='session'){
+    const s=data.sessions.find(x=>x.id===_eid);if(!s)return;
+    const sub=g('ei-subject'),dur=parseFloat(g('ei-dur'));
+    if(!sub||!dur||dur<=0){alert('Subject and duration required.');return;}
+    s.subject=sub;s.duration=dur;s.time=g('ei-time')||'';s.planId=g('ei-plan')||null;s.notes=g('ei-notes');
+    data.sessions.sort((a,b)=>{if(!a.time&&!b.time)return 0;if(!a.time)return 1;if(!b.time)return-1;return a.time.localeCompare(b.time);});
+    closeEdit();saveDay(['sessions','overview','score']);
+    renderPlanQuickPick();
+    if(document.getElementById('sp-plans')&&document.getElementById('sp-plans').style.display!=='none')renderPlans();
+  }else if(_etype==='schedule'){
+    const s=data.schedule.find(x=>x.id===_eid);if(!s)return;
+    const title=g('ei-title');if(!title){alert('Title required.');return;}
+    const ns=g('ei-start')||'',ne=g('ei-end')||'';
+    if(ns&&isOverlap(ns,ne,_eid)){alert('⚠️ Overlaps an existing block.');return;}
+    s.title=title;s.type=g('ei-type');s.start=ns;s.end=ne;s.desc=g('ei-desc');
+    data.schedule.sort((a,b)=>a.start.localeCompare(b.start));
+    closeEdit();saveDay(['schedule','overview']);
+  }else if(_etype==='activity'){
+    const a=data.activities.find(x=>x.id===_eid);if(!a)return;
+    const name=g('ei-name');if(!name){alert('Name required.');return;}
+    a.name=name;a.priority=g('ei-priority');a.time=g('ei-time')||'';a.notes=g('ei-notes');
+    closeEdit();saveDay(['activities','overview','score']);
+  }else if(_etype==='habit'){
+    const h=data.habits.find(x=>x.id===_eid);if(!h)return;
+    const name=g('ei-name');if(!name){alert('Name required.');return;}
+    if(meta.habits.some(x=>x.id!==_eid&&x.name.toLowerCase()===name.toLowerCase())){alert('A habit with that name already exists.');return;}
+    h.name=name;const mh=meta.habits.find(x=>x.id===_eid);if(mh)mh.name=name;
+    saveMeta();closeEdit();saveDay(['habits']);
+  }else if(_etype==='watch'){
+    const w=data.watchlist.find(x=>x.id===_eid);if(!w)return;
+    const title=g('ei-title');if(!title){alert('Title required.');return;}
+    w.title=title;w.platform=g('ei-platform');w.status=g('ei-status');w.notes=g('ei-notes');
+    closeEdit();saveDay(['watch','overview']);
+  }else if(_etype==='plan'){
+    const p=meta.plans.find(x=>x.id===_eid);if(!p)return;
+    const name=g('ei-pname'),date=g('ei-pdate');
+    if(!name||!date){alert('Name and date required.');return;}
+    const oldName=p.name;
+    p.name=name;p.date=date;p.targetHours=parseFloat(g('ei-phours'))||0;
+    p.course=g('ei-pcourse')||'';p.notes=g('ei-pnotes');
+    if(data.goal.label===oldName&&_selectedPlanId===p.id){
+      data.goal.label=name;
+      const lEl=document.getElementById('goal-label');
+      if(lEl)lEl.value=name;
+    }
+    saveMeta();closeEdit();renderPlans();renderOverview();renderPlanQuickPick();renderStudyStatBar();
+    updateGoalPlanBanner();
+  }
+}
+</script>
+</body>
+</html>
