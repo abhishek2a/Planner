@@ -71,9 +71,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .section{display:none;padding:0 0 24px;}
 .section.active{display:block;animation:slideUp 0.22s cubic-bezier(.4,0,.2,1);}
 @keyframes slideUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
-.subnav{display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:0;border-bottom:1px solid var(--border);background:var(--surf);position:sticky;top:0;z-index:10;}
+.subnav{display:flex;overflow:hidden;gap:0;border-bottom:1px solid var(--border);background:var(--surf);position:sticky;top:0;z-index:10;touch-action:pan-y;}
 .subnav::-webkit-scrollbar{display:none;}
-.subnav-btn{flex-shrink:0;padding:12px 16px;border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:500;color:var(--text3);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;transition:color 0.15s;min-height:44px;}
+.subnav-btn{flex:1;padding:10px 4px;border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:500;color:var(--text3);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;transition:color 0.15s;min-height:44px;text-align:center;}
 .subnav-btn.active{color:var(--amber);border-bottom-color:var(--amber);}
 .sec-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--text);padding:18px 16px 4px;letter-spacing:-0.01em;}
 .panel{background:var(--surf);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:16px;margin-bottom:8px;}
@@ -330,7 +330,7 @@ select option{background:var(--surf2);color:var(--text);}
 .backup-sub{font-size:11px;color:var(--text3);margin-top:2px;}
 
 /* ── STUDY+PLAN HEADER STAT BAR ──────────────────────── */
-.sp-stat-bar{display:flex;gap:8px;padding:12px 16px 0;overflow-x:auto;}
+.sp-stat-bar{display:flex;flex-wrap:wrap;gap:6px;padding:12px 16px 0;touch-action:pan-y;}
 .sp-stat-bar::-webkit-scrollbar{display:none;}
 .sp-pill{flex-shrink:0;background:var(--surf);border:1px solid var(--border);border-radius:99px;padding:6px 14px;font-size:0.72rem;font-weight:600;display:flex;align-items:center;gap:6px;}
 .sp-pill span{color:var(--text3);}
@@ -612,7 +612,7 @@ select option{background:var(--surf2);color:var(--text);}
         <div class="panel">
           <div class="panel-label">Add to Watch List</div>
           <div class="form-group"><label class="field-label">Title / Channel</label><input type="text" id="watch-title" placeholder="e.g. Mirzapur S3"></div>
-          <div class="form-group"><label class="field-label">Platform</label><select id="watch-platform"><option value="youtube">YouTube</option><option value="netflix">Netflix</option><option value="jiohotstar">JioHotstar</option><option value="zee5">Zee5</option><option value="sonyliv">Sony LIV</option><option value="prime">Prime Video</option><option value="appletv">Apple TV+</option><option value="other">Other</option></select></div>
+          <div class="form-group"><label class="field-label">Platform</label><select id="watch-platform"><option value="youtube">YouTube</option><option value="netflix">Netflix</option><option value="jiohotstar">JioHotstar</option><option value="zee5">Zee5</option><option value="sonyliv">Sony LIV</option><option value="prime">Prime Video</option><option value="appletv">Apple TV+</option><option value="theatre">Theatre</option><option value="other">Other</option></select></div>
           <div class="form-group"><label class="field-label">Status</label><select id="watch-status"><option value="planned">Planned</option><option value="watching">Watching</option><option value="done">Done</option></select></div>
           <div class="form-group"><label class="field-label">Episode / Notes</label><input type="text" id="watch-notes" placeholder="Episode 3, Season 2…"></div>
           <div class="btn-row"><button class="btn btn-primary btn-full" onclick="addWatch()">+ Add to List</button></div>
@@ -704,10 +704,8 @@ select option{background:var(--surf2);color:var(--text);}
   const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
   document.getElementById('pwa-manifest').href=URL.createObjectURL(blob);
 })();
-(function(){
-  const sw=`const C='dp-v5';self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.add(self.registration.scope)).then(()=>self.skipWaiting()));});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{if(res.ok){const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));}return res;}).catch(()=>caches.match(e.request))));});`;
-  if('serviceWorker' in navigator){const b=new Blob([sw],{type:'application/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b),{scope:'./'}).catch(()=>{});}
-})();
+// ServiceWorker skipped: Safari freezes on blob: URL SW registration.
+// App still works fully offline via localStorage.
 let _deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();_deferredPrompt=e;if(!localStorage.getItem('pwa-dismissed'))setTimeout(()=>document.getElementById('pwa-banner').classList.add('show'),2000);});
 function pwaTriggerInstall(){dismissPwaBanner();if(_deferredPrompt){_deferredPrompt.prompt();_deferredPrompt=null;}}
@@ -778,10 +776,19 @@ function loadDay(k){
 function saveDay(secs){
   try{localStorage.setItem(STORE+currentKey,JSON.stringify(data));}
   catch(e){showStorageError();return;}
+  invalidateDayKeysCache();
   updateStreak();render(secs);
 }
 function getDayData(k){try{const s=localStorage.getItem(STORE+k);return s?JSON.parse(s):null;}catch(e){return null;}}
-function getAllDayKeys(){const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(STORE))keys.push(k.replace(STORE,''));}return keys.sort().reverse();}
+let _dayKeysCache=null;
+function getAllDayKeys(){
+  if(_dayKeysCache)return _dayKeysCache;
+  const keys=[];
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(STORE))keys.push(k.replace(STORE,''));}
+  _dayKeysCache=keys.sort().reverse();
+  return _dayKeysCache;
+}
+function invalidateDayKeysCache(){_dayKeysCache=null;}
 
 let _storageWarned=false;
 function showStorageError(){if(_storageWarned)return;_storageWarned=true;alert('⚠️ Storage full or unavailable.');}
@@ -1048,8 +1055,12 @@ function renderStudyStatBar(){
 function addPlan(){
   const name=document.getElementById('plan-name').value.trim();
   const date=document.getElementById('plan-date').value;
-  if(!name||!date){alert('Enter a plan name and target date.');return;}
-  const hours=parseFloat(document.getElementById('plan-hours').value)||0;
+  if(!name){alert('⚠️ Enter a plan name.');return;}
+  if(!date){alert('⚠️ Pick a target date.');return;}
+  const hoursRaw=document.getElementById('plan-hours').value;
+  const hours=parseFloat(hoursRaw)||0;
+  if(hoursRaw&&(isNaN(hours)||hours<0)){alert('⚠️ Enter a valid number of hours.');return;}
+  if(hours>5000){alert('⚠️ Target hours seems too high. Max 5000.');return;}
   const notes=document.getElementById('plan-notes').value.trim();
   const course=document.getElementById('plan-course').value||'';
   meta.plans.push({id:uid(),name,date,targetHours:hours,notes,course,createdAt:todayKey()});
@@ -1171,6 +1182,7 @@ const PLAT={
   sonyliv:{label:'Sony LIV',svg:`<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" rx="16" fill="#0A1E18"/><circle cx="40" cy="40" r="24" fill="none" stroke="#00C4A0" stroke-width="6"/><text x="40" y="47" font-family="Arial Black,Arial" font-size="18" font-weight="900" fill="#00C4A0" text-anchor="middle">LIV</text></svg>`},
   prime:{label:'Prime Video',svg:`<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" rx="16" fill="#0A1222"/><text x="40" y="36" font-family="Arial" font-size="11" font-weight="700" fill="#00A8E1" text-anchor="middle" letter-spacing="1">prime</text><text x="40" y="52" font-family="Arial" font-size="9" font-weight="500" fill="#7DC8E8" text-anchor="middle" letter-spacing="2">VIDEO</text><path d="M20 60 Q40 72 60 60" stroke="#00A8E1" stroke-width="4" fill="none" stroke-linecap="round"/><polygon points="56,56 62,60 56,64" fill="#00A8E1"/></svg>`},
   appletv:{label:'Apple TV+',svg:`<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" rx="16" fill="#111"/><path d="M40 18 C36 18 32 20 30 24 C26 24 20 28 21 36 C22 44 29 52 37 52 C39 52 40 51 40 51 C40 51 41 52 43 52 C51 52 58 44 59 36 C60 28 54 24 50 24 C48 20 44 18 40 18Z" fill="#F5F5F5"/><ellipse cx="37" cy="16" rx="4" ry="5" fill="#F5F5F5" transform="rotate(-15 37 16)"/><text x="40" y="70" font-family="Arial" font-size="10" font-weight="700" fill="#888" text-anchor="middle" letter-spacing="1">TV+</text></svg>`},
+  theatre:{label:'Theatre',svg:`<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" rx="16" fill="#1a0a2e"/><ellipse cx="28" cy="38" rx="14" ry="18" fill="none" stroke="#f0c040" stroke-width="4"/><path d="M22 32 Q28 26 34 32" stroke="#f0c040" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M22 44 Q28 50 34 44" stroke="#f0c040" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="52" cy="38" rx="14" ry="18" fill="none" stroke="#c06080" stroke-width="4"/><path d="M46 34 Q52 28 58 34" stroke="#c06080" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M46 42 Q52 48 58 42" stroke="#c06080" stroke-width="3" fill="none" stroke-linecap="round"/><text x="40" y="68" font-family="Arial" font-size="8" font-weight="700" fill="#888" text-anchor="middle" letter-spacing="1">THEATRE</text></svg>`},
   other:{label:'Other',svg:`<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" rx="16" fill="#0D0F1E"/><rect x="14" y="22" width="52" height="34" rx="5" stroke="#6B7DE8" stroke-width="4" fill="none"/><line x1="28" y1="56" x2="28" y2="66" stroke="#6B7DE8" stroke-width="4"/><line x1="52" y1="56" x2="52" y2="66" stroke="#6B7DE8" stroke-width="4"/><line x1="20" y1="66" x2="60" y2="66" stroke="#6B7DE8" stroke-width="4" stroke-linecap="round"/><polygon points="35,30 35,46 50,38" fill="#6B7DE8"/></svg>`}
 };
 function getPlat(k){return PLAT[k]||PLAT.other;}
@@ -1235,8 +1247,11 @@ function renderScore(){
 // ── SESSIONS ──────────────────────────────────────────────────────────────────
 function addSession(){
   const sub=document.getElementById('sess-subject').value.trim();
-  const dur=parseFloat(document.getElementById('sess-dur').value);
-  if(!sub||!dur||dur<=0){alert('Enter subject and duration.');return;}
+  const durRaw=document.getElementById('sess-dur').value;
+  const dur=parseFloat(durRaw);
+  if(!sub){alert('⚠️ Enter a subject name.');return;}
+  if(!durRaw||isNaN(dur)||dur<=0){alert('⚠️ Enter a valid duration (e.g. 1.5).');return;}
+  if(dur>24){alert('⚠️ Duration cannot exceed 24 hours.');return;}
   const planId=_selectedPlanId||null;
   data.sessions.push({id:uid(),subject:sub,duration:dur,time:getTime('tp-sess'),planId,notes:document.getElementById('sess-notes').value.trim()});
   data.sessions.sort((a,b)=>{if(!a.time&&!b.time)return 0;if(!a.time)return 1;if(!b.time)return-1;return a.time.localeCompare(b.time);});
@@ -1260,7 +1275,9 @@ function isOverlap(start,end,excludeId){
 function addSchedule(){
   const title=document.getElementById('sch-title').value.trim();
   const start=getTime('tp-sch-start'),end=getTime('tp-sch-end');
-  if(!title||!start){alert('Enter title and start time.');return;}
+  if(!title){alert('⚠️ Enter a title for the block.');return;}
+  if(!start){alert('⚠️ Select a start time.');return;}
+  if(end&&end<=start){alert('⚠️ End time must be after start time.');return;}
   if(isOverlap(start,end,null)){alert('⚠️ Time overlaps an existing block.');return;}
   data.schedule.push({id:uid(),start,end,type:document.getElementById('sch-type').value,title,desc:document.getElementById('sch-desc').value.trim()});
   data.schedule.sort((a,b)=>a.start.localeCompare(b.start));
@@ -1324,19 +1341,51 @@ function renderSessions(){
   }).join('');
 }
 
+// Returns true if a schedule block's end time (or start if no end) is in the past
+function isSchedPast(s){
+  if(s.done)return true;
+  const ref=s.end||s.start;
+  if(!ref)return false;
+  const now=new Date();
+  const[h,m]=ref.split(':');
+  const blockEnd=new Date(now.getFullYear(),now.getMonth(),now.getDate(),+h,+m,0);
+  return blockEnd<now;
+}
+function isSchedNow(s){
+  if(!s.start)return false;
+  const now=new Date();
+  const ms=now.getHours()*60+now.getMinutes();
+  const[sh,sm]=s.start.split(':');
+  const startMin=+sh*60+ +sm;
+  const endMin=s.end?(()=>{const[eh,em]=s.end.split(':');return +eh*60+ +em;})():startMin+60;
+  return ms>=startMin&&ms<endMin;
+}
+function toggleSchedDone(id){
+  const s=data.schedule.find(x=>x.id===id);
+  if(s){s.done=!s.done;saveDay(['schedule','overview']);}
+}
 function renderSchedule(){
   const el=document.getElementById('schedule-list');
   if(!data.schedule.length){el.innerHTML=emptyHTML('🗓','No blocks yet');return;}
   const barC={study:'bar-amber',break:'bar-teal',activity:'bar-indigo',watch:'bar-rose'};
   const badC={study:'badge-amber',break:'badge-teal',activity:'badge-indigo',watch:'badge-rose'};
-  el.innerHTML=data.schedule.map(s=>`<div class="list-item">
-    <div class="item-bar ${barC[s.type]||'bar-amber'}"></div>
-    <div class="item-time">${fmt(s.start)}${s.end?' – '+fmt(s.end):''}</div>
-    <div class="item-info"><div class="item-title">${esc(s.title)}</div>${s.desc?'<div class="item-sub">'+esc(s.desc)+'</div>':''}</div>
-    <span class="badge ${badC[s.type]||'badge-amber'}">${s.type}</span>
-    <button class="btn-edit" style="margin-left:4px;" onclick="editSchedule('${s.id}')">✏️</button>
-    <button class="btn-del" style="margin-left:4px;" onclick="removeItem('schedule','${s.id}')">✕</button>
-  </div>`).join('');
+  el.innerHTML=data.schedule.map(s=>{
+    const past=isSchedPast(s);
+    const live=isSchedNow(s)&&!s.done;
+    const manualDone=!!s.done;
+    const statusBadge=live
+      ?`<span class="badge" style="background:rgba(61,191,114,0.15);color:var(--green);border:1px solid var(--green-bdr);margin-right:4px;">▶ Now</span>`
+      :(past?`<span class="badge" style="background:var(--surf3);color:var(--text3);border:1px solid var(--border2);margin-right:4px;">✓ Done</span>`:'');
+    return `<div class="list-item" style="${past?'opacity:0.45;':''}${live?'background:rgba(61,191,114,0.04);':''}">
+      <div class="item-bar ${barC[s.type]||'bar-amber'}" style="${live?'background:var(--green);':''}"></div>
+      <div class="item-time">${fmt(s.start)}${s.end?' – '+fmt(s.end):''}</div>
+      <div class="item-info"><div class="item-title" style="${past?'text-decoration:line-through;':''}">${esc(s.title)}</div>${s.desc?'<div class="item-sub">'+esc(s.desc)+'</div>':''}</div>
+      ${statusBadge}
+      <button onclick="toggleSchedDone('${s.id}')" style="background:${manualDone?'var(--green)':'var(--surf3)'};border:1.5px solid ${manualDone?'var(--green)':'var(--border2)'};color:${manualDone?'#fff':'var(--text3)'};border-radius:8px;width:28px;height:28px;font-size:13px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;" title="${manualDone?'Mark undone':'Mark done'}">${manualDone?'✓':'○'}</button>
+      <button class="btn-edit" style="margin-left:4px;" onclick="editSchedule('${s.id}')">✏️</button>
+      <button class="btn-del" style="margin-left:4px;" onclick="removeItem('schedule','${s.id}')">✕</button>
+    </div>`;
+  }).join('');
 }
 
 function renderActivities(){
@@ -1398,7 +1447,15 @@ function renderOverview(){
   document.getElementById('ov-sched').textContent=data.schedule.length;
   document.getElementById('ov-goal-txt').textContent=hrs+'h / '+data.goal.hours+'h';
   document.getElementById('ov-goal-bar').style.width=pct+'%';
-  document.getElementById('ov-sched-list').innerHTML=data.schedule.slice(0,4).map(s=>`<div class="mini-list-item"><div class="mli-left">${esc(s.title)}</div><div class="mli-right">${s.start?fmt(s.start):'—'}</div></div>`).join('')||emptyHTML('','No schedule yet');
+  // Overview: show upcoming blocks only (time not yet passed)
+  const upcomingSched=data.schedule.filter(s=>!isSchedPast(s));
+  document.getElementById('ov-sched-list').innerHTML=upcomingSched.slice(0,4).map(s=>{
+    const live=isSchedNow(s);
+    return `<div class="mini-list-item">
+      <div class="mli-left">${live?'▶ ':''}${esc(s.title)}</div>
+      <div class="mli-right" style="${live?'color:var(--green);':''}">${s.start?fmt(s.start):'—'}</div>
+    </div>`;
+  }).join('')||emptyHTML('','No upcoming blocks');
   document.getElementById('ov-act-list').innerHTML=data.activities.filter(a=>!a.done).slice(0,4).map(a=>`<div class="mini-list-item"><div class="mli-left">${esc(a.name)}</div><div class="mli-right" style="font-size:12px;color:var(--text3)">${a.priority}</div></div>`).join('')||emptyHTML('','All done! 🎉');
   document.getElementById('ov-sess-list').innerHTML=data.sessions.slice(0,4).map(s=>{
     const plan=s.planId?meta.plans.find(p=>p.id===s.planId):null;
@@ -1472,19 +1529,87 @@ function renderHistory(){
   if(!keys.length){el.innerHTML=emptyHTML('🗂','No history yet.');return;}
   el.innerHTML=keys.map(k=>{
     const d=getDayData(k);if(!d)return '';
-    const hrs=sumHours(d.sessions),done=d.activities.filter(a=>a.done).length;
+    const hrs=sumHours(d.sessions),done=(d.activities||[]).filter(a=>a.done).length;
+    const habitsDone=(d.habits||[]).filter(h=>h.done).length;
+    const watchDone=(d.watchlist||[]).filter(w=>w.status==='done').length;
     const chips=[];
     if(hrs>0)chips.push(`<span class="hchip hc-a">📚 ${hrs}h</span>`);
-    if(d.activities.length)chips.push(`<span class="hchip hc-t">✅ ${done}/${d.activities.length}</span>`);
-    if(d.schedule.length)chips.push(`<span class="hchip hc-i">🕐 ${d.schedule.length}</span>`);
+    if((d.activities||[]).length)chips.push(`<span class="hchip hc-t">✅ ${done}/${d.activities.length}</span>`);
+    if((d.habits||[]).length)chips.push(`<span class="hchip hc-i">🎯 ${habitsDone}/${d.habits.length}</span>`);
+    if((d.schedule||[]).length)chips.push(`<span class="hchip hc-i">🕐 ${d.schedule.length}</span>`);
+    if((d.watchlist||[]).length)chips.push(`<span class="hchip hc-r">▶ ${watchDone}/${d.watchlist.length}</span>`);
     if(d.mood)chips.push(`<span class="hchip hc-m">${d.moodEmoji||''} ${d.mood}</span>`);
-    return `<div class="hist-card" onclick="toggleHistDetail('${k}')">
-      <div class="hist-head"><div class="hist-date">${fmtKey(k)}${k===todayKey()?' <span style="font-size:11px;color:var(--amber)">(Today)</span>':''}</div>${d.rating?'<div class="hist-rating">'+'★'.repeat(d.rating)+'</div>':''}</div>
+
+    // ── sections inside expanded detail ──
+    const sessHTML=d.sessions&&d.sessions.length
+      ?`<div class="section-lbl" style="padding-top:10px;">📚 Study Sessions</div>`
+       +d.sessions.map(s=>{
+         const pl=s.planId?meta.plans.find(p=>p.id===s.planId):null;
+         return `<div class="mini-list-item">
+           <div class="mli-left">${esc(s.subject)}${s.time?' <span style="color:var(--text3);font-size:11px;">@ ${fmt(s.time)}</span>':''}${pl?' · <span style="color:var(--amber);font-size:11px;">📋 '+esc(pl.name)+'</span>':''}</div>
+           <div class="mli-right">${s.duration}h</div>
+         </div>`;
+       }).join(''):'';
+
+    const schedHTML=d.schedule&&d.schedule.length
+      ?`<div class="section-lbl">🕐 Schedule</div>`
+       +d.schedule.map(s=>`<div class="mini-list-item">
+         <div class="mli-left">${s.done||false?'<span style="color:var(--green)">✓</span> ':''}<span style="${s.done?'text-decoration:line-through;color:var(--text3)':''}">${esc(s.title)}</span></div>
+         <div class="mli-right" style="font-size:11px;color:var(--text3)">${s.start?fmt(s.start):'—'}${s.end?' – '+fmt(s.end):''}</div>
+       </div>`).join(''):'';
+
+    const actHTML=d.activities&&d.activities.length
+      ?`<div class="section-lbl">✏️ Activities</div>`
+       +d.activities.map(a=>`<div class="mini-list-item">
+         <div class="mli-left">${a.done?'<span style="color:var(--teal)">✓</span> ':'<span style="color:var(--text3)">○</span> '}<span style="${a.done?'text-decoration:line-through;color:var(--text3)':''}">${esc(a.name)}</span></div>
+         <div class="mli-right" style="font-size:11px;color:var(--text3)">${a.priority}</div>
+       </div>`).join(''):'';
+
+    const habitHTML=d.habits&&d.habits.length
+      ?`<div class="section-lbl">🎯 Habits</div>`
+       +d.habits.map(h=>`<div class="mini-list-item">
+         <div class="mli-left">${h.done?'<span style="color:var(--teal)">✓</span> ':'<span style="color:var(--text3)">○</span> '}<span style="${h.done?'color:var(--text)':'color:var(--text3)'}">${esc(h.name)}</span></div>
+         <div class="mli-right" style="font-size:11px;color:${h.done?'var(--teal)':'var(--text3)'}">${h.done?'Done':'—'}</div>
+       </div>`).join(''):'';
+
+    const watchHTML=d.watchlist&&d.watchlist.length
+      ?`<div class="section-lbl">▶ Watch List</div>`
+       +d.watchlist.map(w=>{
+         const plat=getPlat(w.platform);
+         const sc=w.status==='done'?'color:var(--teal)':w.status==='watching'?'color:var(--indigo)':'color:var(--text3)';
+         const sl=w.status==='done'?'✓ Watched':w.status==='watching'?'▶ Watching':'Planned';
+         return `<div class="mini-list-item">
+           <div class="mli-left">${esc(w.title)} <span style="font-size:11px;color:var(--text3)">· ${plat.label}${w.notes?' · '+esc(w.notes):''}</span></div>
+           <div class="mli-right" style="font-size:11px;${sc}">${sl}</div>
+         </div>`;
+       }).join(''):'';
+
+    const moodHTML=d.mood
+      ?`<div class="mini-list-item" style="border-top:1px solid var(--border);">
+          <div class="mli-left">Mood</div>
+          <div class="mli-right">${d.moodEmoji||''} ${d.mood}</div>
+        </div>`:'';
+
+    const journalHTML=d.journal
+      ?`<div class="hist-journal">📝 ${esc(d.journal)}</div>`:'';
+
+    const hasDetail=d.sessions.length||(d.schedule||[]).length||(d.activities||[]).length||(d.habits||[]).length||(d.watchlist||[]).length||d.mood||d.journal;
+
+    return `<div class="hist-card">
+      <div class="hist-head" onclick="toggleHistDetail('${k}')" style="cursor:pointer;">
+        <div>
+          <div class="hist-date">${fmtKey(k)}${k===todayKey()?' <span style="font-size:11px;color:var(--amber)">(Today)</span>':''}</div>
+          ${d.rating?`<div style="font-size:11px;color:var(--amber);margin-top:2px;">${'★'.repeat(d.rating)}${'☆'.repeat(5-d.rating)}</div>`:''}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${d.rating?'':''}
+          <span style="font-size:11px;color:var(--text3);">${hasDetail?'▾ tap':'—'}</span>
+        </div>
+      </div>
       <div class="hist-chips">${chips.join('')||'<span style="font-size:12px;color:var(--text3)">No data</span>'}</div>
       <div class="hist-detail" id="hd-${k}">
-        ${d.sessions.length?'<div class="section-lbl" style="padding-top:10px;">Sessions</div>'+d.sessions.map(s=>{const pl=s.planId?meta.plans.find(p=>p.id===s.planId):null;return`<div class="mini-list-item"><div class="mli-left">${esc(s.subject)}${pl?' · <span style="color:var(--amber)">'+esc(pl.name)+'</span>':''}</div><div class="mli-right">${s.duration}h</div></div>`;}).join(''):''}
-        ${d.activities.length?'<div class="section-lbl">Activities</div>'+d.activities.map(a=>`<div class="mini-list-item"><div class="mli-left">${a.done?'✓ ':''}${esc(a.name)}</div><div class="mli-right" style="color:var(--text3);font-size:12px">${a.priority}</div></div>`).join(''):''}
-        ${d.journal?'<div class="hist-journal">📝 '+esc(d.journal)+'</div>':''}
+        ${sessHTML}${schedHTML}${actHTML}${habitHTML}${watchHTML}${moodHTML}${journalHTML}
+        ${!hasDetail?'<div style="padding:10px 16px 12px;font-size:12px;color:var(--text3);">Nothing recorded this day.</div>':''}
       </div>
     </div>`;
   }).join('');
@@ -1495,6 +1620,7 @@ function toggleHistDetail(k){const el=document.getElementById('hd-'+k);if(el)el.
 function clearToday(){
   if(!confirm('Clear all of today\'s data? Cannot be undone.'))return;
   localStorage.removeItem(STORE+currentKey);
+  invalidateDayKeysCache();
   data=emptyDay();
   meta.habits.forEach(mh=>data.habits.push({id:mh.id,name:mh.name,done:false}));
   _selectedPlanId=null;
@@ -1556,7 +1682,26 @@ renderAll();
 renderPlanQuickPick();
 renderCourseSelect('plan-course','');
 
-// ── EDIT MODAL ────────────────────────────────────────────────────────────────
+// ── DAY-CHANGE DETECTION ──────────────────────────────────────────────────────
+// When the app wakes up on a new day, save yesterday + load fresh today
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='visible')return;
+  const newKey=todayKey();
+  if(newKey!==currentKey){
+    // Save current day before switching
+    try{localStorage.setItem(STORE+currentKey,JSON.stringify(data));}catch(e){}
+    currentKey=newKey;
+    _selectedPlanId=null;
+    loadDay(currentKey);
+    initDate();
+    renderAll();
+    renderPlanQuickPick();
+  }
+});
+// Refresh schedule past/live status every minute without full re-render
+setInterval(()=>{
+  if(data.schedule.length){renderSchedule();renderOverview();}
+},60000);
 let _eid=null,_etype=null;
 function openEdit(){document.getElementById('edit-backdrop').classList.add('open');document.getElementById('edit-sheet').classList.add('open');}
 function closeEdit(){document.getElementById('edit-backdrop').classList.remove('open');document.getElementById('edit-sheet').classList.remove('open');_eid=null;_etype=null;}
@@ -1635,8 +1780,12 @@ function saveEdit(){
   if(!_eid||!_etype){closeEdit();return;}
   if(_etype==='session'){
     const s=data.sessions.find(x=>x.id===_eid);if(!s)return;
-    const sub=g('ei-subject'),dur=parseFloat(g('ei-dur'));
-    if(!sub||!dur||dur<=0){alert('Subject and duration required.');return;}
+    const sub=g('ei-subject');
+    const durRaw=document.getElementById('ei-dur').value;
+    const dur=parseFloat(durRaw);
+    if(!sub){alert('⚠️ Subject cannot be empty.');return;}
+    if(!durRaw||isNaN(dur)||dur<=0){alert('⚠️ Enter a valid duration.');return;}
+    if(dur>24){alert('⚠️ Duration cannot exceed 24 hours.');return;}
     s.subject=sub;s.duration=dur;s.time=g('ei-time')||'';s.planId=g('ei-plan')||null;s.notes=g('ei-notes');
     data.sessions.sort((a,b)=>{if(!a.time&&!b.time)return 0;if(!a.time)return 1;if(!b.time)return-1;return a.time.localeCompare(b.time);});
     closeEdit();saveDay(['sessions','overview','score']);
