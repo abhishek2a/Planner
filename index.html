@@ -12,8 +12,8 @@
 
 <!-- ── FIREBASE ──────────────────────────────────────────── -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-analytics.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
   import {
     getAuth,
     createUserWithEmailAndPassword,
@@ -21,7 +21,15 @@
     signOut,
     onAuthStateChanged,
     updateProfile
-  } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+  } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+  import {
+    getFirestore,
+    doc,
+    setDoc,
+    getDoc,
+    collection,
+    getDocs
+  } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAl3bRPegRS1CUNSztuzXImlhLIqPpNbxg",
@@ -33,23 +41,39 @@
     measurementId: "G-ZRL78SDBSJ"
   };
 
-  const app = initializeApp(firebaseConfig);
+  const app  = initializeApp(firebaseConfig);
   const analytics = getAnalytics(app);
   const auth = getAuth(app);
+  const db   = getFirestore(app);
 
-  // Expose to non-module world
-  window._fbAuth = auth;
-  window._fbLogin  = (email, pass) => signInWithEmailAndPassword(auth, email, pass);
-  window._fbSignup = (email, pass, name) =>
+  /* ── Auth helpers ── */
+  window._fbAuth    = auth;
+  window._fbLogin   = (email, pass) => signInWithEmailAndPassword(auth, email, pass);
+  window._fbSignup  = (email, pass, name) =>
     createUserWithEmailAndPassword(auth, email, pass).then(cred => {
       if (name) return updateProfile(cred.user, { displayName: name }).then(() => cred);
       return cred;
     });
-  window._fbLogout = () => signOut(auth);
+  window._fbLogout       = () => signOut(auth);
   window._fbOnAuthChange = cb => onAuthStateChanged(auth, cb);
-  window._fbReady = true;
 
-  // Notify app that Firebase is ready
+  /* ── Firestore helpers ── */
+  window._fbSaveDay = (uid, dateKey, data) =>
+    setDoc(doc(db, 'users', uid, 'days', dateKey), data);
+
+  window._fbLoadDay = (uid, dateKey) =>
+    getDoc(doc(db, 'users', uid, 'days', dateKey));
+
+  window._fbLoadAllDays = (uid) =>
+    getDocs(collection(db, 'users', uid, 'days'));
+
+  window._fbSaveMeta = (uid, meta) =>
+    setDoc(doc(db, 'users', uid, 'meta', 'data'), meta);
+
+  window._fbLoadMeta = (uid) =>
+    getDoc(doc(db, 'users', uid, 'meta', 'data'));
+
+  window._fbReady = true;
   window.dispatchEvent(new Event('fb-ready'));
 </script>
 
@@ -95,8 +119,18 @@ html{height:100%;overscroll-behavior:none;}
 body{font-family:-apple-system,'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;transition:background .3s,color .3s;}
 ::-webkit-scrollbar{display:none;}*{scrollbar-width:none;}
 
-/* ── APP ──────── */
 .app{display:flex;flex-direction:column;height:100vh;height:100dvh;position:fixed;inset:0;}
+
+/* ── SYNC INDICATOR ── */
+#sync-indicator{
+  position:fixed;top:calc(var(--sat) + 8px);right:calc(var(--sar) + 8px);
+  z-index:999;font-size:10px;font-weight:700;letter-spacing:.04em;
+  padding:3px 9px;border-radius:99px;pointer-events:none;
+  transition:opacity .4s;opacity:0;
+}
+#sync-indicator.syncing{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr);opacity:1;}
+#sync-indicator.synced{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr);opacity:1;}
+#sync-indicator.error{background:var(--rose-bg);color:var(--rose);border:1px solid var(--rose-bdr);opacity:1;}
 
 /* ── AUTH SCREEN ─────────────────────────────────────────── */
 #auth-screen{
@@ -587,7 +621,6 @@ select option{background:var(--surf2);}
 }
 @keyframes navPillIn{from{opacity:0;transform:translateX(-50%) scale(.7);}to{opacity:1;transform:translateX(-50%) scale(1);}}
 
-/* ── USER PILL in header ─── */
 .user-pill{
   font-size:.65rem;color:var(--text3);font-weight:600;
   display:flex;align-items:center;gap:5px;
@@ -600,11 +633,13 @@ select option{background:var(--surf2);}
 </head>
 <body>
 
+<div id="sync-indicator"></div>
+
 <!-- ── LOADING SPLASH ──────────────────────────────────────── -->
 <div class="auth-loading" id="auth-loading">
   <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;letter-spacing:-.04em;"><span style="color:var(--amber)">Planner</span></div>
   <div class="auth-spinner"></div>
-  <div class="auth-loading-txt">Loading…</div>
+  <div class="auth-loading-txt" id="auth-loading-txt">Loading…</div>
 </div>
 
 <!-- ── AUTH SCREEN ─────────────────────────────────────────── -->
@@ -620,8 +655,6 @@ select option{background:var(--surf2);}
     </div>
     <div class="auth-body">
       <div class="auth-err" id="auth-err"></div>
-
-      <!-- Login form -->
       <div id="form-login">
         <div class="auth-field">
           <label class="auth-label">Email</label>
@@ -633,8 +666,6 @@ select option{background:var(--surf2);}
         </div>
         <button class="auth-submit" id="btn-login" onclick="doLogin()">Sign In →</button>
       </div>
-
-      <!-- Signup form -->
       <div id="form-signup" style="display:none;">
         <div class="auth-field">
           <label class="auth-label">Name <span style="color:var(--text3);font-weight:400;">(optional)</span></label>
@@ -651,7 +682,7 @@ select option{background:var(--surf2);}
         <button class="auth-submit" id="btn-signup" onclick="doSignup()">Create Account →</button>
       </div>
     </div>
-    <div class="auth-footer">Your data is stored locally on this device.</div>
+    <div class="auth-footer">Data synced across your devices via cloud.</div>
   </div>
 </div>
 
@@ -925,15 +956,13 @@ select option{background:var(--surf2);}
       </div>
       <div id="more-settings" style="display:none;">
         <div class="sec-title">⚙️ Data</div>
-
-        <!-- Version -->
         <div class="ov-card" style="margin-bottom:8px;">
           <div class="mini-list-item">
             <div class="mli-left" style="display:flex;align-items:center;gap:8px;">
               <span style="font-size:18px;">📱</span>
               <div>
                 <div style="font-size:13px;font-weight:600;color:var(--text);">Planner</div>
-                <div style="font-size:11px;color:var(--text3);margin-top:1px;">Version 2.7.0 · Build 20260509</div>
+                <div style="font-size:11px;color:var(--text3);margin-top:1px;">Version 2.8.0 · Build 20260509</div>
               </div>
             </div>
             <div class="mli-right">
@@ -941,8 +970,6 @@ select option{background:var(--surf2);}
             </div>
           </div>
         </div>
-
-        <!-- Account -->
         <div class="section-lbl">Account</div>
         <div class="ov-card" style="margin-bottom:8px;">
           <div class="backup-row">
@@ -953,8 +980,23 @@ select option{background:var(--surf2);}
             <button class="btn btn-ghost" style="font-size:13px;min-height:40px;padding:0 16px;border-color:var(--rose-bdr);color:var(--rose);" onclick="doLogout()">Sign Out</button>
           </div>
         </div>
-
-        <!-- Auto-Carry -->
+        <div class="section-lbl">Cloud Sync</div>
+        <div class="ov-card" style="margin-bottom:8px;">
+          <div class="backup-row">
+            <div class="backup-txt">
+              <div class="backup-title">☁️ Firestore Sync</div>
+              <div class="backup-sub">Data auto-syncs to cloud after every change. Works across devices.</div>
+            </div>
+            <button class="btn btn-ghost" style="font-size:13px;min-height:40px;padding:0 16px;" onclick="manualSync()">Sync Now</button>
+          </div>
+          <div class="backup-row" style="border-bottom:none;">
+            <div class="backup-txt">
+              <div class="backup-title" style="font-size:12px;color:var(--text3);">Last sync</div>
+              <div class="backup-sub" id="last-sync-time">Never</div>
+            </div>
+            <div style="font-size:18px;" id="sync-status-icon">☁️</div>
+          </div>
+        </div>
         <div class="section-lbl">Auto-Carry</div>
         <div class="ov-card" style="margin-bottom:8px;">
           <div class="backup-row">
@@ -968,8 +1010,6 @@ select option{background:var(--surf2);}
             </button>
           </div>
         </div>
-
-        <!-- Danger -->
         <div class="section-lbl">Danger Zone</div>
         <div class="ov-card" style="margin-bottom:8px;">
           <div class="backup-row">
@@ -980,7 +1020,6 @@ select option{background:var(--surf2);}
             <button class="btn btn-del" style="font-size:12px;" onclick="clearToday()">Clear</button>
           </div>
         </div>
-
         <div class="section-lbl">Storage Info</div>
         <div class="ov-card" style="margin-bottom:8px;"><div id="storage-info"></div></div>
       </div>
@@ -1048,6 +1087,24 @@ function applyTheme(){
 }
 (function(){if(localStorage.getItem('dp-theme')==='light')_isLight=true;})();
 
+// ── SYNC INDICATOR ────────────────────────────────────────────────────────────
+let _syncHideTimer=null;
+function showSyncState(state,msg){
+  const el=document.getElementById('sync-indicator');
+  el.className='';el.textContent='';
+  clearTimeout(_syncHideTimer);
+  if(state==='syncing'){el.textContent='↑ Syncing…';el.className='syncing';}
+  else if(state==='synced'){
+    el.textContent='✓ Synced';el.className='synced';
+    _syncHideTimer=setTimeout(()=>{el.style.opacity='0';},2500);
+    const icon=document.getElementById('sync-status-icon');
+    const timeEl=document.getElementById('last-sync-time');
+    if(icon)icon.textContent='✅';
+    if(timeEl)timeEl.textContent='Just now · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  }
+  else if(state==='error'){el.textContent='⚠ Offline';el.className='error';_syncHideTimer=setTimeout(()=>{el.style.opacity='0';},3500);}
+}
+
 // ── AUTH UI ───────────────────────────────────────────────────────────────────
 let _currentUser=null;
 
@@ -1062,6 +1119,7 @@ function hideAuthScreen(){
   document.getElementById('auth-loading').classList.add('hidden');
   document.getElementById('main-app').style.display='flex';
 }
+function setLoadingMsg(msg){const el=document.getElementById('auth-loading-txt');if(el)el.textContent=msg;}
 function switchAuthTab(tab){
   document.getElementById('tab-login').classList.toggle('active',tab==='login');
   document.getElementById('tab-signup').classList.toggle('active',tab==='signup');
@@ -1114,15 +1172,12 @@ function doLogout(){
   if(!confirm('Sign out of Planner?'))return;
   window._fbLogout().then(()=>{
     _currentUser=null;
-    // Reset storage scope
     STORE='dp6_day_';META_K='dp6_meta';
     data=emptyDay();meta={streak:0,habits:[],plans:[],courses:['CSEB'],autoCarryActivities:false,autoCarryHabits:false};
     _selectedPlanId=null;
     showAuthScreen();
   });
 }
-
-// Enter key on auth inputs
 document.addEventListener('keydown',e=>{
   if(e.key!=='Enter')return;
   const ls=document.getElementById('auth-screen');
@@ -1133,7 +1188,6 @@ document.addEventListener('keydown',e=>{
 });
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
-// These are mutable — scoped per user UID after auth
 let STORE='dp6_day_', META_K='dp6_meta';
 let meta={streak:0,habits:[],plans:[],courses:['CSEB'],autoCarryActivities:false,autoCarryHabits:false};
 let data=emptyDay(), currentKey=todayKey();
@@ -1159,7 +1213,10 @@ function loadMeta(){
     }
   }catch(e){}
 }
-function saveMeta(){try{localStorage.setItem(META_K,JSON.stringify(meta));}catch(e){showStorageError();}}
+function saveMeta(){
+  try{localStorage.setItem(META_K,JSON.stringify(meta));}catch(e){showStorageError();}
+  _syncMeta();
+}
 
 function loadDay(k){
   try{
@@ -1182,6 +1239,7 @@ function saveDay(secs){
   invalidateDayKeysCache();
   render(secs);
   updateStreak();
+  _syncDay(currentKey,data);
 }
 function getDayData(k){try{const s=localStorage.getItem(STORE+k);return s?JSON.parse(s):null;}catch(e){return null;}}
 function getOrCreateDayData(k){
@@ -1195,6 +1253,7 @@ function getOrCreateDayData(k){
 function saveDayToKey(k,dayData){
   try{localStorage.setItem(STORE+k,JSON.stringify(dayData));}catch(e){showStorageError();}
   invalidateDayKeysCache();
+  _syncDay(k,dayData);
 }
 let _dayKeysCache=null;
 function getAllDayKeys(){
@@ -1226,6 +1285,209 @@ function updateStreak(){
     saveMeta();
     document.getElementById('streak-pill').textContent='🔥 '+streak+(streak===1?' day':' days');
   },0);
+}
+
+// ── FIRESTORE SYNC ────────────────────────────────────────────────────────────
+let _syncDayTimers={};
+let _syncMetaTimer=null;
+
+// Debounced day sync — 2s after last change
+function _syncDay(key,dayData){
+  if(!_currentUser)return;
+  clearTimeout(_syncDayTimers[key]);
+  _syncDayTimers[key]=setTimeout(()=>{
+    showSyncState('syncing');
+    window._fbSaveDay(_currentUser.uid,key,dayData)
+      .then(()=>showSyncState('synced'))
+      .catch(()=>showSyncState('error'));
+  },2000);
+}
+
+// Debounced meta sync — 2s after last change
+function _syncMeta(){
+  if(!_currentUser)return;
+  clearTimeout(_syncMetaTimer);
+  _syncMetaTimer=setTimeout(()=>{
+    showSyncState('syncing');
+    window._fbSaveMeta(_currentUser.uid,meta)
+      .then(()=>showSyncState('synced'))
+      .catch(()=>showSyncState('error'));
+  },2000);
+}
+
+// Manual "Sync Now" — flush all local days to Firestore immediately
+async function manualSync(){
+  if(!_currentUser){alert('Not signed in.');return;}
+  showSyncState('syncing');
+  try{
+    await window._fbSaveMeta(_currentUser.uid,meta);
+    const keys=getAllDayKeys();
+    for(const k of keys){
+      const d=getDayData(k);
+      if(d)await window._fbSaveDay(_currentUser.uid,k,d);
+    }
+    showSyncState('synced');
+  }catch(e){
+    showSyncState('error');
+    console.warn('Manual sync failed:',e);
+  }
+}
+
+// Merge helper — union arrays by id, prefer non-empty scalars from remote
+function mergeArrayById(local,remote){
+  const map=new Map();
+  (local||[]).forEach(x=>map.set(x.id,x));
+  (remote||[]).forEach(x=>{if(!map.has(x.id))map.set(x.id,x);});
+  return Array.from(map.values());
+}
+function mergeDay(local,remote){
+  return{
+    goal:remote.goal||local.goal||{hours:6,label:''},
+    sessions:mergeArrayById(local.sessions,remote.sessions),
+    schedule:mergeArrayById(local.schedule,remote.schedule),
+    activities:mergeArrayById(local.activities,remote.activities),
+    watchlist:mergeArrayById(local.watchlist,remote.watchlist),
+    habits:mergeArrayById(local.habits,remote.habits),
+    mood:remote.mood||local.mood||'',
+    moodEmoji:remote.moodEmoji||local.moodEmoji||'',
+    journal:remote.journal||local.journal||'',
+    rating:remote.rating||local.rating||0,
+  };
+}
+function mergeMeta(local,remote){
+  const planMap=new Map();
+  (local.plans||[]).forEach(p=>planMap.set(p.id,p));
+  (remote.plans||[]).forEach(p=>{if(!planMap.has(p.id))planMap.set(p.id,p);});
+  const courseSet=new Set([...(local.courses||[]),...(remote.courses||[])]);
+  if(!courseSet.has('CSEB'))courseSet.add('CSEB');
+  return{
+    ...remote,
+    plans:Array.from(planMap.values()),
+    courses:Array.from(courseSet),
+    streak:Math.max(local.streak||0,remote.streak||0),
+    autoCarryActivities:remote.autoCarryActivities||local.autoCarryActivities||false,
+    autoCarryHabits:remote.autoCarryHabits||local.autoCarryHabits||false,
+  };
+}
+
+// Migrate pre-login data (legacy keys dp6_day_* → new account)
+async function migrateLegacyData(uid){
+  const LEGACY_STORE='dp6_day_';
+  const LEGACY_META='dp6_meta';
+  const legacyKeys=[];
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k&&k.startsWith(LEGACY_STORE))legacyKeys.push(k);
+  }
+  const legacyMeta=localStorage.getItem(LEGACY_META);
+  if(!legacyMeta&&!legacyKeys.length)return;
+
+  setLoadingMsg('Migrating your data…');
+  const newMetaKey='dp6_'+uid+'_meta';
+  const newStore='dp6_'+uid+'_day_';
+
+  // Upload + move legacy meta
+  if(legacyMeta){
+    try{
+      const parsed=JSON.parse(legacyMeta);
+      // Check if Firestore already has meta — if so, merge
+      const existing=await window._fbLoadMeta(uid);
+      if(existing.exists()){
+        const merged=mergeMeta(parsed,existing.data());
+        localStorage.setItem(newMetaKey,JSON.stringify(merged));
+        await window._fbSaveMeta(uid,merged);
+      }else{
+        localStorage.setItem(newMetaKey,legacyMeta);
+        await window._fbSaveMeta(uid,parsed);
+      }
+      localStorage.removeItem(LEGACY_META);
+    }catch(e){console.warn('Meta migration failed:',e);}
+  }
+
+  // Upload + move legacy day keys
+  for(const k of legacyKeys){
+    const dateKey=k.replace(LEGACY_STORE,'');
+    const val=localStorage.getItem(k);
+    if(!val)continue;
+    try{
+      const parsed=JSON.parse(val);
+      const newKey=newStore+dateKey;
+      const existing=await window._fbLoadDay(uid,dateKey);
+      if(existing.exists()){
+        const merged=mergeDay(parsed,existing.data());
+        localStorage.setItem(newKey,JSON.stringify(merged));
+        await window._fbSaveDay(uid,dateKey,merged);
+      }else{
+        localStorage.setItem(newKey,val);
+        await window._fbSaveDay(uid,dateKey,parsed);
+      }
+      localStorage.removeItem(k);
+    }catch(e){console.warn('Day migration failed:',dateKey,e);}
+  }
+}
+
+// Pull all Firestore data into localStorage on login
+async function syncFromFirestore(uid){
+  setLoadingMsg('Syncing from cloud…');
+  const newMetaKey='dp6_'+uid+'_meta';
+  const newStore='dp6_'+uid+'_day_';
+  try{
+    // Sync meta
+    const metaDoc=await window._fbLoadMeta(uid);
+    if(metaDoc.exists()){
+      const fsData=metaDoc.data();
+      const localStr=localStorage.getItem(newMetaKey);
+      if(localStr){
+        const localData=JSON.parse(localStr);
+        const merged=mergeMeta(localData,fsData);
+        localStorage.setItem(newMetaKey,JSON.stringify(merged));
+      }else{
+        localStorage.setItem(newMetaKey,JSON.stringify(fsData));
+      }
+    }else{
+      // New user — push whatever local meta exists
+      const localStr=localStorage.getItem(newMetaKey);
+      if(localStr){
+        try{await window._fbSaveMeta(uid,JSON.parse(localStr));}catch(e){}
+      }
+    }
+
+    // Sync all days
+    const daysSnap=await window._fbLoadAllDays(uid);
+    const fsKeys=new Set();
+    for(const docSnap of daysSnap.docs){
+      const dateKey=docSnap.id;
+      fsKeys.add(dateKey);
+      const fsData=docSnap.data();
+      const localKey=newStore+dateKey;
+      const localStr=localStorage.getItem(localKey);
+      if(localStr){
+        const localData=JSON.parse(localStr);
+        const merged=mergeDay(localData,fsData);
+        localStorage.setItem(localKey,JSON.stringify(merged));
+      }else{
+        localStorage.setItem(localKey,JSON.stringify(fsData));
+      }
+    }
+
+    // Push any local-only days up to Firestore
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k&&k.startsWith(newStore)){
+        const dateKey=k.replace(newStore,'');
+        if(!fsKeys.has(dateKey)){
+          const val=localStorage.getItem(k);
+          if(val){
+            try{await window._fbSaveDay(uid,dateKey,JSON.parse(val));}catch(e){}
+          }
+        }
+      }
+    }
+    showSyncState('synced');
+  }catch(e){
+    console.warn('Firestore sync failed, using local data:',e);
+    showSyncState('error');
+  }
 }
 
 // ── RENDER DISPATCHER ─────────────────────────────────────────────────────────
@@ -1694,19 +1956,22 @@ function toggleHistDetail(k){const el=document.getElementById('hd-'+k);if(el)el.
 function clearToday(){
   if(!confirm('Clear all of today\'s data? Cannot be undone.'))return;
   localStorage.removeItem(STORE+currentKey);invalidateDayKeysCache();
+  // Also delete from Firestore
+  if(_currentUser){
+    window._fbSaveDay(_currentUser.uid,currentKey,emptyDay()).catch(()=>{});
+  }
   data=emptyDay();_selectedPlanId=null;renderAll();renderSettings();renderPlanQuickPick();
 }
 function renderSettings(){
   const keys=getAllDayKeys();let totalBytes=0;
   for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&(k.startsWith(STORE)||k===META_K))totalBytes+=(localStorage.getItem(k)||'').length*2;}
-  // Update account info
   if(_currentUser){
     const infoEl=document.getElementById('settings-user-info');
     if(infoEl)infoEl.textContent=(_currentUser.displayName?_currentUser.displayName+' · ':'')+_currentUser.email;
   }
   document.getElementById('storage-info').innerHTML=`
     <div class="mini-list-item"><div class="mli-left">Days tracked</div><div class="mli-right">${keys.length}</div></div>
-    <div class="mini-list-item"><div class="mli-left">Storage used</div><div class="mli-right">${(totalBytes/1024).toFixed(1)} KB</div></div>
+    <div class="mini-list-item"><div class="mli-left">Local storage used</div><div class="mli-right">${(totalBytes/1024).toFixed(1)} KB</div></div>
     <div class="mini-list-item"><div class="mli-left">Plans created</div><div class="mli-right">${meta.plans.length}</div></div>
     <div class="mini-list-item"><div class="mli-left">Courses saved</div><div class="mli-right">${meta.courses.length}</div></div>
     <div class="mini-list-item"><div class="mli-left">Current streak</div><div class="mli-right">${meta.streak} days</div></div>`;
@@ -1835,11 +2100,16 @@ document.addEventListener('visibilitychange',()=>{
   }else{_schedTimerActive=false;}
 });
 
-// ── BOOTSTRAP (deferred until Firebase auth ready) ────────────────────────────
-function initApp(user){
+// ── BOOTSTRAP ─────────────────────────────────────────────────────────────────
+async function initApp(user){
   _currentUser=user;
 
-  // Scope storage keys per user — keeps data isolated per account on shared device
+  // Show loading while syncing
+  document.getElementById('auth-loading').classList.remove('hidden');
+  document.getElementById('main-app').style.display='none';
+  setLoadingMsg('Setting up…');
+
+  // Scope storage keys per user
   STORE='dp6_'+user.uid+'_day_';
   META_K='dp6_'+user.uid+'_meta';
   _dayKeysCache=null;
@@ -1851,6 +2121,13 @@ function initApp(user){
   const pillName=document.getElementById('user-pill-name');
   if(pillName)pillName.textContent=name;
 
+  // 1. Migrate any pre-login / anonymous localStorage data
+  await migrateLegacyData(user.uid);
+
+  // 2. Sync Firestore → localStorage (merge)
+  await syncFromFirestore(user.uid);
+
+  // 3. Normal init from localStorage (now has merged data)
   loadMeta();
   loadDay(currentKey);
 
@@ -1874,7 +2151,6 @@ function initApp(user){
   hideAuthScreen();
 }
 
-// Wait for Firebase module to be ready, then listen for auth state
 function startAuthListener(){
   window._fbOnAuthChange(user=>{
     if(user){initApp(user);}
