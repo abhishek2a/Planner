@@ -20,7 +20,10 @@
     signInWithEmailAndPassword,
     signOut,
     onAuthStateChanged,
-    updateProfile
+    updateProfile,
+    updatePassword,
+    reauthenticateWithCredential,
+    EmailAuthProvider
   } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
   import {
     getFirestore,
@@ -46,7 +49,6 @@
   const auth = getAuth(app);
   const db   = getFirestore(app);
 
-  /* ── Auth helpers ── */
   window._fbAuth    = auth;
   window._fbLogin   = (email, pass) => signInWithEmailAndPassword(auth, email, pass);
   window._fbSignup  = (email, pass, name) =>
@@ -57,19 +59,20 @@
   window._fbLogout       = () => signOut(auth);
   window._fbOnAuthChange = cb => onAuthStateChanged(auth, cb);
 
-  /* ── Firestore helpers ── */
+  window._fbUpdateDisplayName = (user, name) => updateProfile(user, { displayName: name });
+  window._fbChangePassword = (user, currentPass, newPass) => {
+    const cred = EmailAuthProvider.credential(user.email, currentPass);
+    return reauthenticateWithCredential(user, cred).then(() => updatePassword(user, newPass));
+  };
+
   window._fbSaveDay = (uid, dateKey, data) =>
     setDoc(doc(db, 'users', uid, 'days', dateKey), data);
-
   window._fbLoadDay = (uid, dateKey) =>
     getDoc(doc(db, 'users', uid, 'days', dateKey));
-
   window._fbLoadAllDays = (uid) =>
     getDocs(collection(db, 'users', uid, 'days'));
-
   window._fbSaveMeta = (uid, meta) =>
     setDoc(doc(db, 'users', uid, 'meta', 'data'), meta);
-
   window._fbLoadMeta = (uid) =>
     getDoc(doc(db, 'users', uid, 'meta', 'data'));
 
@@ -121,16 +124,8 @@ body{font-family:-apple-system,'DM Sans',sans-serif;background:var(--bg);color:v
 
 .app{display:flex;flex-direction:column;height:100vh;height:100dvh;position:fixed;inset:0;}
 
-/* ── SYNC INDICATOR ── */
-#sync-indicator{
-  position:fixed;top:calc(var(--sat) + 8px);right:calc(var(--sar) + 8px);
-  z-index:999;font-size:10px;font-weight:700;letter-spacing:.04em;
-  padding:3px 9px;border-radius:99px;pointer-events:none;
-  transition:opacity .4s;opacity:0;
-}
-#sync-indicator.syncing{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr);opacity:1;}
-#sync-indicator.synced{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr);opacity:1;}
-#sync-indicator.error{background:var(--rose-bg);color:var(--rose);border:1px solid var(--rose-bdr);opacity:1;}
+/* ── SYNC INDICATOR (inline in Data section now, floating removed) ── */
+#sync-indicator{display:none;}
 
 /* ── AUTH SCREEN ─────────────────────────────────────────── */
 #auth-screen{
@@ -232,7 +227,6 @@ body{font-family:-apple-system,'DM Sans',sans-serif;background:var(--bg);color:v
   padding:5px 13px;border-radius:99px;font-size:0.68rem;font-weight:600;
   white-space:nowrap;font-family:'DM Mono',monospace;letter-spacing:0.02em;
 }
-.streak-pill{font-size:0.7rem;color:var(--rose);font-weight:700;letter-spacing:-0.01em;}
 .theme-toggle{
   background:var(--surf3);border:1px solid var(--border2);
   border-radius:99px;width:36px;height:36px;
@@ -312,7 +306,7 @@ body{font-family:-apple-system,'DM Sans',sans-serif;background:var(--bg);color:v
 .pf-rose{background:linear-gradient(90deg,#a01040,var(--rose));}
 .form-group{margin-bottom:14px;}.form-group:last-child{margin-bottom:0;}
 .field-label{display:block;font-size:0.72rem;font-weight:600;color:var(--text2);margin-bottom:8px;letter-spacing:.02em;}
-input[type="text"],input[type="number"],input[type="date"],select,textarea{
+input[type="text"],input[type="number"],input[type="date"],input[type="password"],select,textarea{
   width:100%;font-size:16px;font-family:-apple-system,'DM Sans',sans-serif;
   color:var(--text);background:var(--surf3);border:1.5px solid var(--border2);
   border-radius:var(--r-sm);padding:14px 16px;outline:none;
@@ -621,14 +615,37 @@ select option{background:var(--surf2);}
 }
 @keyframes navPillIn{from{opacity:0;transform:translateX(-50%) scale(.7);}to{opacity:1;transform:translateX(-50%) scale(1);}}
 
-.user-pill{
-  font-size:.65rem;color:var(--text3);font-weight:600;
-  display:flex;align-items:center;gap:5px;
-  background:var(--surf3);border:1px solid var(--border2);
-  padding:3px 10px;border-radius:99px;cursor:default;
-  max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+/* ── INLINE SYNC STATUS (Data section) ── */
+.sync-status-inline{
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;font-weight:600;
+  padding:10px 16px;border-radius:var(--r-xs);
+  margin:0 20px 4px;
+  transition:all .3s;
 }
-.user-pill-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;}
+.sync-status-inline.syncing{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr);}
+.sync-status-inline.synced{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr);}
+.sync-status-inline.error{background:var(--rose-bg);color:var(--rose);border:1px solid var(--rose-bdr);}
+.sync-status-inline.idle{background:var(--surf3);color:var(--text3);border:1px solid var(--border2);}
+
+/* ── ACCOUNT HERO CARD ── */
+.account-hero{
+  margin:0 20px 10px;
+  background:linear-gradient(160deg,var(--surf2),var(--surf3));
+  border:1px solid var(--border);border-radius:var(--r);
+  padding:20px;
+}
+.account-hero-name{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--text);margin-bottom:3px;}
+.account-hero-email{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.account-hero-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+.account-hero-pill{
+  font-size:.65rem;font-weight:700;padding:4px 12px;border-radius:99px;
+  display:flex;align-items:center;gap:5px;
+}
+.ahp-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr);}
+.ahp-rose{background:var(--rose-bg);color:var(--rose);border:1px solid var(--rose-bdr);}
+.account-hero-btns{display:flex;gap:8px;}
+.account-hero-btns .btn-ghost{flex:1;font-size:12px;min-height:38px;padding:0 10px;}
 </style>
 </head>
 <body>
@@ -697,10 +714,6 @@ select option{background:var(--surf2);}
       <div class="header-top-row">
         <div class="date-pill" id="date-pill">—</div>
         <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <div class="streak-pill" id="streak-pill">🔥 0 days</div>
-        <div class="user-pill" id="user-pill" title="Signed in"><div class="user-pill-dot"></div><span id="user-pill-name">—</span></div>
       </div>
     </div>
   </div>
@@ -913,7 +926,7 @@ select option{background:var(--surf2);}
     <div class="section" id="sec-more">
       <div class="subnav">
         <button class="subnav-btn active" onclick="switchSubnav(this,'more-watch');renderWatch();">▶ Watch</button>
-        <button class="subnav-btn" onclick="switchSubnav(this,'more-weekly');renderWeekly();">📊 Weekly</button>
+        <button class="subnav-btn" onclick="switchSubnav(this,'more-weekly');renderWeekly();">📊 Analytics</button>
         <button class="subnav-btn" onclick="switchSubnav(this,'more-history');renderHistory();">🗂 History</button>
         <button class="subnav-btn" onclick="switchSubnav(this,'more-settings');renderSettings();">⚙️ Data</button>
       </div>
@@ -932,7 +945,7 @@ select option{background:var(--surf2);}
         <div class="ov-card" style="margin-bottom:8px;"><div id="watch-list"></div></div>
       </div>
       <div id="more-weekly" style="display:none;">
-        <div class="sec-title">Weekly Report</div>
+        <div class="sec-title">Analytics</div>
         <div class="week-nav">
           <button class="btn btn-ghost" style="min-height:40px;padding:0 12px;font-size:13px;" onclick="shiftWeek(-1)">← Prev</button>
           <div class="week-nav-lbl" id="week-lbl">This Week</div>
@@ -956,36 +969,27 @@ select option{background:var(--surf2);}
       </div>
       <div id="more-settings" style="display:none;">
         <div class="sec-title">⚙️ Data</div>
-        <div class="ov-card" style="margin-bottom:8px;">
-          <div class="mini-list-item">
-            <div class="mli-left" style="display:flex;align-items:center;gap:8px;">
-              <span style="font-size:18px;">📱</span>
-              <div>
-                <div style="font-size:13px;font-weight:600;color:var(--text);">Planner</div>
-                <div style="font-size:11px;color:var(--text3);margin-top:1px;">Version 2.8.0 · Build 20260509</div>
-              </div>
-            </div>
-            <div class="mli-right">
-              <span style="font-size:10px;font-weight:700;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr);padding:3px 8px;border-radius:99px;">STABLE</span>
-            </div>
+        <!-- Account Hero Card -->
+        <div class="account-hero">
+          <div class="account-hero-name" id="acct-name">—</div>
+          <div class="account-hero-email" id="acct-email">—</div>
+          <div class="account-hero-pills">
+            <div class="account-hero-pill ahp-green"><span>●</span><span id="acct-streak">🔥 0 days</span></div>
+            <div class="account-hero-pill ahp-rose" id="acct-sync-pill">☁️ Not synced</div>
+          </div>
+          <div class="account-hero-btns">
+            <button class="btn btn-ghost" onclick="openChangeUsername()">✏️ Username</button>
+            <button class="btn btn-ghost" onclick="openChangePassword()">🔑 Password</button>
+            <button class="btn btn-ghost" style="border-color:var(--rose-bdr);color:var(--rose);" onclick="doLogout()">Sign Out</button>
           </div>
         </div>
-        <div class="section-lbl">Account</div>
-        <div class="ov-card" style="margin-bottom:8px;">
-          <div class="backup-row">
-            <div class="backup-txt">
-              <div class="backup-title">👤 Signed In As</div>
-              <div class="backup-sub" id="settings-user-info">—</div>
-            </div>
-            <button class="btn btn-ghost" style="font-size:13px;min-height:40px;padding:0 16px;border-color:var(--rose-bdr);color:var(--rose);" onclick="doLogout()">Sign Out</button>
-          </div>
-        </div>
+        <!-- Sync Status -->
         <div class="section-lbl">Cloud Sync</div>
         <div class="ov-card" style="margin-bottom:8px;">
           <div class="backup-row">
             <div class="backup-txt">
               <div class="backup-title">☁️ Firestore Sync</div>
-              <div class="backup-sub">Data auto-syncs to cloud after every change. Works across devices.</div>
+              <div class="backup-sub">Auto-syncs after every change. Works across devices.</div>
             </div>
             <button class="btn btn-ghost" style="font-size:13px;min-height:40px;padding:0 16px;" onclick="manualSync()">Sync Now</button>
           </div>
@@ -995,6 +999,21 @@ select option{background:var(--surf2);}
               <div class="backup-sub" id="last-sync-time">Never</div>
             </div>
             <div style="font-size:18px;" id="sync-status-icon">☁️</div>
+          </div>
+        </div>
+        <!-- App info -->
+        <div class="ov-card" style="margin-bottom:8px;">
+          <div class="mini-list-item">
+            <div class="mli-left" style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:18px;">📱</span>
+              <div>
+                <div style="font-size:13px;font-weight:600;color:var(--text);">Planner</div>
+                <div style="font-size:11px;color:var(--text3);margin-top:1px;">Version 2.9.0 · Build 20260510</div>
+              </div>
+            </div>
+            <div class="mli-right">
+              <span style="font-size:10px;font-weight:700;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr);padding:3px 8px;border-radius:99px;">STABLE</span>
+            </div>
           </div>
         </div>
         <div class="section-lbl">Auto-Carry</div>
@@ -1056,7 +1075,7 @@ select option{background:var(--surf2);}
       <button class="edit-close-btn" onclick="closeEdit()">✕</button>
     </div>
     <div class="edit-sheet-body" id="edit-sheet-body"></div>
-    <div class="edit-actions">
+    <div class="edit-actions" id="edit-actions">
       <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
       <button class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
     </div>
@@ -1087,22 +1106,26 @@ function applyTheme(){
 }
 (function(){if(localStorage.getItem('dp-theme')==='light')_isLight=true;})();
 
-// ── SYNC INDICATOR ────────────────────────────────────────────────────────────
+// ── SYNC STATE (inline in Data section) ───────────────────────────────────────
 let _syncHideTimer=null;
-function showSyncState(state,msg){
-  const el=document.getElementById('sync-indicator');
-  el.className='';el.textContent='';
-  clearTimeout(_syncHideTimer);
-  if(state==='syncing'){el.textContent='↑ Syncing…';el.className='syncing';}
-  else if(state==='synced'){
-    el.textContent='✓ Synced';el.className='synced';
-    _syncHideTimer=setTimeout(()=>{el.style.opacity='0';},2500);
-    const icon=document.getElementById('sync-status-icon');
-    const timeEl=document.getElementById('last-sync-time');
+let _syncState='idle';
+function showSyncState(state){
+  _syncState=state;
+  // Update inline pill in account hero
+  const pill=document.getElementById('acct-sync-pill');
+  const icon=document.getElementById('sync-status-icon');
+  const timeEl=document.getElementById('last-sync-time');
+  if(state==='syncing'){
+    if(pill){pill.textContent='↑ Syncing…';pill.className='account-hero-pill';pill.style.background='var(--amber-bg)';pill.style.color='var(--amber)';pill.style.border='1px solid var(--amber-bdr)';}
+  }else if(state==='synced'){
+    const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    if(pill){pill.textContent='✓ Synced · '+t;pill.className='account-hero-pill';pill.style.background='var(--green-bg)';pill.style.color='var(--green)';pill.style.border='1px solid var(--green-bdr)';}
     if(icon)icon.textContent='✅';
-    if(timeEl)timeEl.textContent='Just now · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    if(timeEl)timeEl.textContent='Just now · '+t;
+  }else if(state==='error'){
+    if(pill){pill.textContent='⚠ Offline';pill.className='account-hero-pill';pill.style.background='var(--rose-bg)';pill.style.color='var(--rose)';pill.style.border='1px solid var(--rose-bdr)';}
+    if(icon)icon.textContent='⚠️';
   }
-  else if(state==='error'){el.textContent='⚠ Offline';el.className='error';_syncHideTimer=setTimeout(()=>{el.style.opacity='0';},3500);}
 }
 
 // ── AUTH UI ───────────────────────────────────────────────────────────────────
@@ -1143,6 +1166,7 @@ function fmtFirebaseErr(code){
     'auth/too-many-requests':'Too many attempts. Please try again later.',
     'auth/network-request-failed':'Network error. Check your connection.',
     'auth/invalid-credential':'Incorrect email or password.',
+    'auth/wrong-password':'Current password is incorrect.',
   };
   return map[code]||'Something went wrong. Please try again.';
 }
@@ -1187,6 +1211,82 @@ document.addEventListener('keydown',e=>{
   }
 });
 
+// ── CHANGE USERNAME ───────────────────────────────────────────────────────────
+function openChangeUsername(){
+  _eid='change-username';_etype='account-username';
+  document.getElementById('edit-sheet-title').textContent='Change Display Name';
+  const current=_currentUser?(_currentUser.displayName||''):'';
+  document.getElementById('edit-sheet-body').innerHTML=`
+    <div class="form-group">
+      <label class="field-label">New Display Name</label>
+      <input type="text" id="ei-new-name" value="${esc(current)}" placeholder="Your name" autocomplete="off">
+    </div>
+    <div id="acct-edit-err" style="font-size:12.5px;color:var(--rose);background:var(--rose-bg);border:1px solid var(--rose-bdr);border-radius:var(--r-xs);padding:10px 14px;display:none;line-height:1.5;margin-top:10px;"></div>`;
+  document.getElementById('edit-actions').innerHTML=`
+    <button class="btn btn-primary" onclick="saveChangeUsername()">Update Name</button>
+    <button class="btn btn-ghost" onclick="closeEdit()">Cancel</button>`;
+  openEdit();
+}
+function saveChangeUsername(){
+  const newName=document.getElementById('ei-new-name').value.trim();
+  if(!newName){showAcctEditErr('Name cannot be empty.');return;}
+  const btn=document.querySelector('#edit-actions .btn-primary');
+  btn.disabled=true;btn.textContent='Updating…';
+  window._fbUpdateDisplayName(_currentUser,newName)
+    .then(()=>{
+      const nameEl=document.getElementById('acct-name');
+      const pillName=document.getElementById('user-pill-name');
+      if(nameEl)nameEl.textContent=newName;
+      if(pillName)pillName.textContent=newName;
+      closeEdit();
+    })
+    .catch(err=>{btn.disabled=false;btn.textContent='Update Name';showAcctEditErr(fmtFirebaseErr(err.code));});
+}
+
+// ── CHANGE PASSWORD ───────────────────────────────────────────────────────────
+function openChangePassword(){
+  _eid='change-password';_etype='account-password';
+  document.getElementById('edit-sheet-title').textContent='Change Password';
+  document.getElementById('edit-sheet-body').innerHTML=`
+    <div class="form-group">
+      <label class="field-label">Current Password</label>
+      <input type="password" id="ei-cur-pass" placeholder="Your current password" autocomplete="current-password">
+    </div>
+    <div class="form-group">
+      <label class="field-label">New Password <span style="color:var(--text3);font-weight:400;">(min 6 chars)</span></label>
+      <input type="password" id="ei-new-pass" placeholder="New password" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label class="field-label">Confirm New Password</label>
+      <input type="password" id="ei-conf-pass" placeholder="Repeat new password" autocomplete="new-password">
+    </div>
+    <div id="acct-edit-err" style="font-size:12.5px;color:var(--rose);background:var(--rose-bg);border:1px solid var(--rose-bdr);border-radius:var(--r-xs);padding:10px 14px;display:none;line-height:1.5;margin-top:10px;"></div>`;
+  document.getElementById('edit-actions').innerHTML=`
+    <button class="btn btn-primary" onclick="saveChangePassword()">Change Password</button>
+    <button class="btn btn-ghost" onclick="closeEdit()">Cancel</button>`;
+  openEdit();
+}
+function saveChangePassword(){
+  const cur=document.getElementById('ei-cur-pass').value;
+  const nw=document.getElementById('ei-new-pass').value;
+  const conf=document.getElementById('ei-conf-pass').value;
+  if(!cur||!nw||!conf){showAcctEditErr('All fields are required.');return;}
+  if(nw.length<6){showAcctEditErr('New password must be at least 6 characters.');return;}
+  if(nw!==conf){showAcctEditErr('New passwords do not match.');return;}
+  const btn=document.querySelector('#edit-actions .btn-primary');
+  btn.disabled=true;btn.textContent='Updating…';
+  window._fbChangePassword(_currentUser,cur,nw)
+    .then(()=>{
+      closeEdit();
+      setTimeout(()=>alert('✓ Password changed successfully.'),200);
+    })
+    .catch(err=>{btn.disabled=false;btn.textContent='Change Password';showAcctEditErr(fmtFirebaseErr(err.code));});
+}
+function showAcctEditErr(msg){
+  const el=document.getElementById('acct-edit-err');
+  if(el){el.textContent=msg;el.style.display='block';}
+}
+
 // ── DATA ──────────────────────────────────────────────────────────────────────
 let STORE='dp6_day_', META_K='dp6_meta';
 let meta={streak:0,habits:[],plans:[],courses:['CSEB'],autoCarryActivities:false,autoCarryHabits:false};
@@ -1217,7 +1317,6 @@ function saveMeta(){
   try{localStorage.setItem(META_K,JSON.stringify(meta));}catch(e){showStorageError();}
   _syncMeta();
 }
-
 function loadDay(k){
   try{
     const s=localStorage.getItem(STORE+k);
@@ -1270,8 +1369,7 @@ let _streakLastCalc='';
 function updateStreak(){
   const today=todayKey();
   if(_streakLastCalc===today&&meta.streak!==undefined){
-    document.getElementById('streak-pill').textContent='🔥 '+meta.streak+(meta.streak===1?' day':' days');
-    return;
+    _applyStreak(meta.streak);return;
   }
   setTimeout(()=>{
     let streak=0,check=today;
@@ -1280,18 +1378,20 @@ function updateStreak(){
       if(d&&((d.sessions||[]).length>0||(d.activities||[]).some(a=>a.done))){streak++;check=addDays(check,-1);}
       else break;
     }
-    meta.streak=streak;
-    _streakLastCalc=today;
-    saveMeta();
-    document.getElementById('streak-pill').textContent='🔥 '+streak+(streak===1?' day':' days');
+    meta.streak=streak;_streakLastCalc=today;
+    saveMeta();_applyStreak(streak);
   },0);
+}
+function _applyStreak(n){
+  const txt='🔥 '+n+(n===1?' day':' days');
+  const el=document.getElementById('acct-streak');
+  if(el)el.textContent=txt;
 }
 
 // ── FIRESTORE SYNC ────────────────────────────────────────────────────────────
 let _syncDayTimers={};
 let _syncMetaTimer=null;
 
-// Debounced day sync — 2s after last change
 function _syncDay(key,dayData){
   if(!_currentUser)return;
   clearTimeout(_syncDayTimers[key]);
@@ -1302,8 +1402,6 @@ function _syncDay(key,dayData){
       .catch(()=>showSyncState('error'));
   },2000);
 }
-
-// Debounced meta sync — 2s after last change
 function _syncMeta(){
   if(!_currentUser)return;
   clearTimeout(_syncMetaTimer);
@@ -1314,26 +1412,17 @@ function _syncMeta(){
       .catch(()=>showSyncState('error'));
   },2000);
 }
-
-// Manual "Sync Now" — flush all local days to Firestore immediately
 async function manualSync(){
   if(!_currentUser){alert('Not signed in.');return;}
   showSyncState('syncing');
   try{
     await window._fbSaveMeta(_currentUser.uid,meta);
     const keys=getAllDayKeys();
-    for(const k of keys){
-      const d=getDayData(k);
-      if(d)await window._fbSaveDay(_currentUser.uid,k,d);
-    }
+    for(const k of keys){const d=getDayData(k);if(d)await window._fbSaveDay(_currentUser.uid,k,d);}
     showSyncState('synced');
-  }catch(e){
-    showSyncState('error');
-    console.warn('Manual sync failed:',e);
-  }
+  }catch(e){showSyncState('error');console.warn('Manual sync failed:',e);}
 }
 
-// Merge helper — union arrays by id, prefer non-empty scalars from remote
 function mergeArrayById(local,remote){
   const map=new Map();
   (local||[]).forEach(x=>map.set(x.id,x));
@@ -1369,125 +1458,61 @@ function mergeMeta(local,remote){
     autoCarryHabits:remote.autoCarryHabits||local.autoCarryHabits||false,
   };
 }
-
-// Migrate pre-login data (legacy keys dp6_day_* → new account)
 async function migrateLegacyData(uid){
-  const LEGACY_STORE='dp6_day_';
-  const LEGACY_META='dp6_meta';
-  const legacyKeys=[];
-  for(let i=0;i<localStorage.length;i++){
-    const k=localStorage.key(i);
-    if(k&&k.startsWith(LEGACY_STORE))legacyKeys.push(k);
-  }
+  const LEGACY_STORE='dp6_day_',LEGACY_META='dp6_meta',legacyKeys=[];
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(LEGACY_STORE))legacyKeys.push(k);}
   const legacyMeta=localStorage.getItem(LEGACY_META);
   if(!legacyMeta&&!legacyKeys.length)return;
-
   setLoadingMsg('Migrating your data…');
-  const newMetaKey='dp6_'+uid+'_meta';
-  const newStore='dp6_'+uid+'_day_';
-
-  // Upload + move legacy meta
+  const newMetaKey='dp6_'+uid+'_meta',newStore='dp6_'+uid+'_day_';
   if(legacyMeta){
     try{
       const parsed=JSON.parse(legacyMeta);
-      // Check if Firestore already has meta — if so, merge
       const existing=await window._fbLoadMeta(uid);
-      if(existing.exists()){
-        const merged=mergeMeta(parsed,existing.data());
-        localStorage.setItem(newMetaKey,JSON.stringify(merged));
-        await window._fbSaveMeta(uid,merged);
-      }else{
-        localStorage.setItem(newMetaKey,legacyMeta);
-        await window._fbSaveMeta(uid,parsed);
-      }
+      if(existing.exists()){const merged=mergeMeta(parsed,existing.data());localStorage.setItem(newMetaKey,JSON.stringify(merged));await window._fbSaveMeta(uid,merged);}
+      else{localStorage.setItem(newMetaKey,legacyMeta);await window._fbSaveMeta(uid,parsed);}
       localStorage.removeItem(LEGACY_META);
     }catch(e){console.warn('Meta migration failed:',e);}
   }
-
-  // Upload + move legacy day keys
   for(const k of legacyKeys){
-    const dateKey=k.replace(LEGACY_STORE,'');
-    const val=localStorage.getItem(k);
-    if(!val)continue;
+    const dateKey=k.replace(LEGACY_STORE,''),val=localStorage.getItem(k);if(!val)continue;
     try{
-      const parsed=JSON.parse(val);
-      const newKey=newStore+dateKey;
+      const parsed=JSON.parse(val),newKey=newStore+dateKey;
       const existing=await window._fbLoadDay(uid,dateKey);
-      if(existing.exists()){
-        const merged=mergeDay(parsed,existing.data());
-        localStorage.setItem(newKey,JSON.stringify(merged));
-        await window._fbSaveDay(uid,dateKey,merged);
-      }else{
-        localStorage.setItem(newKey,val);
-        await window._fbSaveDay(uid,dateKey,parsed);
-      }
+      if(existing.exists()){const merged=mergeDay(parsed,existing.data());localStorage.setItem(newKey,JSON.stringify(merged));await window._fbSaveDay(uid,dateKey,merged);}
+      else{localStorage.setItem(newKey,val);await window._fbSaveDay(uid,dateKey,parsed);}
       localStorage.removeItem(k);
     }catch(e){console.warn('Day migration failed:',dateKey,e);}
   }
 }
-
-// Pull all Firestore data into localStorage on login
 async function syncFromFirestore(uid){
   setLoadingMsg('Syncing from cloud…');
-  const newMetaKey='dp6_'+uid+'_meta';
-  const newStore='dp6_'+uid+'_day_';
+  const newMetaKey='dp6_'+uid+'_meta',newStore='dp6_'+uid+'_day_';
   try{
-    // Sync meta
     const metaDoc=await window._fbLoadMeta(uid);
     if(metaDoc.exists()){
-      const fsData=metaDoc.data();
-      const localStr=localStorage.getItem(newMetaKey);
-      if(localStr){
-        const localData=JSON.parse(localStr);
-        const merged=mergeMeta(localData,fsData);
-        localStorage.setItem(newMetaKey,JSON.stringify(merged));
-      }else{
-        localStorage.setItem(newMetaKey,JSON.stringify(fsData));
-      }
+      const fsData=metaDoc.data(),localStr=localStorage.getItem(newMetaKey);
+      if(localStr){const merged=mergeMeta(JSON.parse(localStr),fsData);localStorage.setItem(newMetaKey,JSON.stringify(merged));}
+      else localStorage.setItem(newMetaKey,JSON.stringify(fsData));
     }else{
-      // New user — push whatever local meta exists
       const localStr=localStorage.getItem(newMetaKey);
-      if(localStr){
-        try{await window._fbSaveMeta(uid,JSON.parse(localStr));}catch(e){}
-      }
+      if(localStr)try{await window._fbSaveMeta(uid,JSON.parse(localStr));}catch(e){}
     }
-
-    // Sync all days
-    const daysSnap=await window._fbLoadAllDays(uid);
-    const fsKeys=new Set();
+    const daysSnap=await window._fbLoadAllDays(uid);const fsKeys=new Set();
     for(const docSnap of daysSnap.docs){
-      const dateKey=docSnap.id;
-      fsKeys.add(dateKey);
-      const fsData=docSnap.data();
-      const localKey=newStore+dateKey;
-      const localStr=localStorage.getItem(localKey);
-      if(localStr){
-        const localData=JSON.parse(localStr);
-        const merged=mergeDay(localData,fsData);
-        localStorage.setItem(localKey,JSON.stringify(merged));
-      }else{
-        localStorage.setItem(localKey,JSON.stringify(fsData));
-      }
+      const dateKey=docSnap.id;fsKeys.add(dateKey);
+      const fsData=docSnap.data(),localKey=newStore+dateKey,localStr=localStorage.getItem(localKey);
+      if(localStr){const merged=mergeDay(JSON.parse(localStr),fsData);localStorage.setItem(localKey,JSON.stringify(merged));}
+      else localStorage.setItem(localKey,JSON.stringify(fsData));
     }
-
-    // Push any local-only days up to Firestore
     for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i);
-      if(k&&k.startsWith(newStore)){
+      const k=localStorage.key(i);if(k&&k.startsWith(newStore)){
         const dateKey=k.replace(newStore,'');
-        if(!fsKeys.has(dateKey)){
-          const val=localStorage.getItem(k);
-          if(val){
-            try{await window._fbSaveDay(uid,dateKey,JSON.parse(val));}catch(e){}
-          }
-        }
+        if(!fsKeys.has(dateKey)){const val=localStorage.getItem(k);if(val)try{await window._fbSaveDay(uid,dateKey,JSON.parse(val));}catch(e){}}
       }
     }
     showSyncState('synced');
-  }catch(e){
-    console.warn('Firestore sync failed, using local data:',e);
-    showSyncState('error');
-  }
+  }catch(e){console.warn('Firestore sync failed:',e);showSyncState('error');}
 }
 
 // ── RENDER DISPATCHER ─────────────────────────────────────────────────────────
@@ -1532,10 +1557,7 @@ function renderCourseSelect(selectId,currentVal){
 function renderCoursesList(){
   const el=document.getElementById('courses-list');if(!el)return;
   if(!meta.courses.length){el.innerHTML=emptyHTML('📚','No courses yet');return;}
-  el.innerHTML=meta.courses.map(c=>`<div class="mini-list-item">
-    <div class="mli-left">📗 ${esc(c)}</div>
-    <div class="mli-right">${c!=='CSEB'?`<button class="btn-del" style="font-size:11px;min-height:28px;padding:0 10px;" onclick="deleteCourse('${esc(c)}')">✕</button>`:'<span style="font-size:11px;color:var(--text3);">default</span>'}</div>
-  </div>`).join('');
+  el.innerHTML=meta.courses.map(c=>`<div class="mini-list-item"><div class="mli-left">📗 ${esc(c)}</div><div class="mli-right">${c!=='CSEB'?`<button class="btn-del" style="font-size:11px;min-height:28px;padding:0 10px;" onclick="deleteCourse('${esc(c)}')">✕</button>`:'<span style="font-size:11px;color:var(--text3);">default</span>'}</div></div>`).join('');
 }
 function showAddCourse(){document.getElementById('course-add-row').style.display='flex';document.getElementById('new-course-input').focus();}
 function cancelAddCourse(){document.getElementById('course-add-row').style.display='none';document.getElementById('new-course-input').value='';}
@@ -1553,14 +1575,8 @@ function deleteCourse(name){
 // ── GOAL PLAN DROPDOWN ────────────────────────────────────────────────────────
 function renderGoalPlanDropdown(){
   const sel=document.getElementById('goal-plan-dropdown');if(!sel)return;
-  const activePlans=meta.plans.filter(p=>{
-    const hrs=getPlanTotalHours(p.id);const pct=p.targetHours?Math.round((hrs/p.targetHours)*100):null;
-    if(pct!==null&&pct>=100)return false;return daysUntil(p.date)>=0;
-  });
-  sel.innerHTML='<option value="">— Select a Plan —</option>'+activePlans.map(p=>{
-    const d=daysUntil(p.date),dLabel=d===0?'today':d+'d left';
-    return `<option value="${p.id}" ${_selectedPlanId===p.id?'selected':''}>${esc(p.name)} (${dLabel})</option>`;
-  }).join('');
+  const activePlans=meta.plans.filter(p=>{const hrs=getPlanTotalHours(p.id);const pct=p.targetHours?Math.round((hrs/p.targetHours)*100):null;if(pct!==null&&pct>=100)return false;return daysUntil(p.date)>=0;});
+  sel.innerHTML='<option value="">— Select a Plan —</option>'+activePlans.map(p=>{const d=daysUntil(p.date),dLabel=d===0?'today':d+'d left';return `<option value="${p.id}" ${_selectedPlanId===p.id?'selected':''}>${esc(p.name)} (${dLabel})</option>`;}).join('');
 }
 function onGoalPlanDropdownChange(planId){
   _selectedPlanId=planId||null;
@@ -1889,7 +1905,7 @@ function renderOverview(){
 }
 function emptyHTML(icon,txt){return `<div class="empty">${icon?'<div class="empty-icon">'+icon+'</div>':''}<div class="empty-txt">${txt}</div></div>`;}
 
-// ── WEEKLY REPORT ─────────────────────────────────────────────────────────────
+// ── WEEKLY / ANALYTICS REPORT ─────────────────────────────────────────────────
 let weekOffset=0;
 const DAY_NAMES=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const MTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1926,7 +1942,7 @@ function renderWeekly(){
   document.getElementById('best-day').innerHTML=bestDay?`<div class="mini-list-item"><div class="mli-left">Day</div><div class="mli-right">${bestDay.name}</div></div><div class="mini-list-item"><div class="mli-left">Study Time</div><div class="mli-right">${bestDay.hrs}h</div></div><div class="mini-list-item"><div class="mli-left">Tasks</div><div class="mli-right">${bestDay.done}/${bestDay.all}</div></div>`:emptyHTML('','No data this week yet');
 }
 
-// ── HISTORY ───────────────────────────────────────────────────────────────────
+// ── HISTORY (with schedule detail) ───────────────────────────────────────────
 function renderHistory(){
   const keys=getAllDayKeys();const el=document.getElementById('history-list');
   if(!keys.length){el.innerHTML=emptyHTML('🗂','No history yet.');return;}
@@ -1934,20 +1950,48 @@ function renderHistory(){
     const d=getDayData(k);if(!d)return '';
     const hrs=sumHours(d.sessions||[]),done=(d.activities||[]).filter(a=>a.done).length,allActs=(d.activities||[]).length;
     const watchDone=(d.watchlist||[]).filter(w=>w.status==='done').length,allWatch=(d.watchlist||[]).length;
+    const schedCount=(d.schedule||[]).length;
     const isToday=k===todayKey();const {score}=calcScoreFor(d);
     const chips=[];
     if(hrs>0)chips.push(`<span class="hchip hc-a">📚 ${hrs}h</span>`);
     if(allActs)chips.push(`<span class="hchip hc-t">✅ ${done}/${allActs}</span>`);
-    if((d.schedule||[]).length)chips.push(`<span class="hchip hc-i">🕐 ${d.schedule.length}</span>`);
+    if(schedCount)chips.push(`<span class="hchip hc-i">🕐 ${schedCount}</span>`);
     if(allWatch)chips.push(`<span class="hchip hc-r">▶ ${watchDone}/${allWatch}</span>`);
     if(d.mood)chips.push(`<span class="hchip hc-m">${d.moodEmoji||''} ${d.mood}</span>`);
-    const sessHTML=(d.sessions&&d.sessions.length)?`<div class="rpt-section"><div class="rpt-sec-hd">📚 Study Sessions</div>`+d.sessions.map(s=>{const pl=s.planId?meta.plans.find(p=>p.id===s.planId):null;const timeStr=s.time?' <span style="color:var(--text3);font-size:11px;">@ '+fmt(s.time)+'</span>':'';const planStr=pl?' · <span style="color:var(--amber);font-size:11px;">'+esc(pl.name)+'</span>':'';return `<div class="rpt-row"><div class="rpt-row-l">${esc(s.subject)}${timeStr}${planStr}</div><div class="rpt-row-r">${s.duration}h</div></div>`;}).join('')+`<div class="rpt-total">Total: ${hrs}h</div></div>`:'';
+
+    // ── SESSIONS ──
+    const sessHTML=(d.sessions&&d.sessions.length)?`<div class="rpt-section"><div class="rpt-sec-hd">📚 Study Sessions</div>`+d.sessions.map(s=>{
+      const pl=s.planId?meta.plans.find(p=>p.id===s.planId):null;
+      const timeStr=s.time?' <span style="color:var(--text3);font-size:11px;">@ '+fmt(s.time)+'</span>':'';
+      const planStr=pl?' · <span style="color:var(--amber);font-size:11px;">'+esc(pl.name)+'</span>':'';
+      return `<div class="rpt-row"><div class="rpt-row-l">${esc(s.subject)}${timeStr}${planStr}</div><div class="rpt-row-r">${s.duration}h</div></div>`;
+    }).join('')+`<div class="rpt-total">Total: ${hrs}h</div></div>`:'';
+
+    // ── SCHEDULE (FIX: now shown in history detail) ──
+    const schedHTML=(d.schedule&&d.schedule.length)?`<div class="rpt-section"><div class="rpt-sec-hd">🕐 Schedule</div>`+d.schedule.map(s=>{
+      const typeColor={study:'var(--amber)',break:'var(--teal)',activity:'var(--indigo)',watch:'var(--rose)'}[s.type]||'var(--amber)';
+      const doneStr=s.done?'<span style="color:var(--teal);font-size:10px;"> ✓</span>':'';
+      return `<div class="rpt-row"><div class="rpt-row-l">${esc(s.title)}${doneStr}${s.desc?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">${esc(s.desc)}</div>`:''}</div><div class="rpt-row-r" style="color:${typeColor};font-size:11px;">${fmt(s.start)}${s.end?' – '+fmt(s.end):''}</div></div>`;
+    }).join('')+`<div class="rpt-total">${d.schedule.filter(s=>s.done).length}/${schedCount} done</div></div>`:'';
+
+    // ── ACTIVITIES ──
     const actHTML=(d.activities&&d.activities.length)?`<div class="rpt-section"><div class="rpt-sec-hd">✏️ Activities</div>`+d.activities.map(a=>`<div class="rpt-row"><div class="rpt-row-l" style="${a.done?'text-decoration:line-through;color:var(--text3);':''}"><span style="color:${a.done?'var(--teal)':'var(--text3)'}">${a.done?'✓':'○'}</span> ${esc(a.name)}${a.notes?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">${esc(a.notes)}</div>`:''}</div><div class="rpt-row-r"><span class="rpt-priority rpt-p-${a.priority}">${a.priority}</span></div></div>`).join('')+`<div class="rpt-total">${done}/${allActs} completed</div></div>`:'';
-    const watchHTML=(d.watchlist&&d.watchlist.length)?`<div class="rpt-section"><div class="rpt-sec-hd">▶ Watch List</div>`+d.watchlist.map(w=>{const plat=getPlat(w.platform);const sc=w.status==='done'?'color:var(--teal)':w.status==='watching'?'color:var(--indigo)':'color:var(--text3)';const sl=w.status==='done'?'✓ Watched':w.status==='watching'?'▶ Watching':'Planned';return `<div class="rpt-row"><div class="rpt-row-l">${esc(w.title)}<span style="font-size:11px;color:var(--text3);"> · ${plat.label}${w.notes?' · '+esc(w.notes):''}</span></div><div class="rpt-row-r" style="font-size:11px;${sc}">${sl}</div></div>`;}).join('')+`</div>`:'';
+
+    // ── WATCH ──
+    const watchHTML=(d.watchlist&&d.watchlist.length)?`<div class="rpt-section"><div class="rpt-sec-hd">▶ Watch List</div>`+d.watchlist.map(w=>{
+      const plat=getPlat(w.platform);const sc=w.status==='done'?'color:var(--teal)':w.status==='watching'?'color:var(--indigo)':'color:var(--text3)';
+      const sl=w.status==='done'?'✓ Watched':w.status==='watching'?'▶ Watching':'Planned';
+      return `<div class="rpt-row"><div class="rpt-row-l">${esc(w.title)}<span style="font-size:11px;color:var(--text3);"> · ${plat.label}${w.notes?' · '+esc(w.notes):''}</span></div><div class="rpt-row-r" style="font-size:11px;${sc}">${sl}</div></div>`;
+    }).join('')+`</div>`:'';
+
+    // ── MOOD / RATING ──
     const moodHTML=d.mood?`<div class="rpt-section"><div class="rpt-sec-hd">💭 Mood &amp; Rating</div><div class="rpt-row"><div class="rpt-row-l">Mood</div><div class="rpt-row-r">${d.moodEmoji||''} ${d.mood}</div></div>${d.rating?`<div class="rpt-row"><div class="rpt-row-l">Day Rating</div><div class="rpt-row-r" style="color:var(--amber)">${'★'.repeat(d.rating)}${'☆'.repeat(5-d.rating)}</div></div>`:''}</div>`:'';
+
+    // ── JOURNAL ──
     const journalHTML=d.journal?`<div class="rpt-section"><div class="rpt-sec-hd">📝 Journal</div><div style="font-size:13px;color:var(--text2);line-height:1.6;padding:4px 0;font-style:italic;">${esc(d.journal)}</div></div>`:'';
-    const hasDetail=sessHTML||actHTML||watchHTML||moodHTML||journalHTML;
-    return `<div class="hist-card"><div class="hist-rpt-head" onclick="toggleHistDetail('${k}')"><div style="flex:1;"><div style="display:flex;align-items:center;gap:8px;"><div class="hist-date">${fmtKey(k)}${isToday?' <span style="font-size:11px;color:var(--amber)">(Today)</span>':''}</div></div><div class="hist-chips" style="padding:6px 0 0;margin:0;">${chips.join('')||'<span style="font-size:12px;color:var(--text3)">No data</span>'}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">${score>0?`<div class="hist-score-badge">${score}</div>`:''}<span style="font-size:12px;color:var(--text3);" id="hist-arrow-${k}">${hasDetail?'▾':'—'}</span></div></div><div class="hist-detail" id="hd-${k}"><div style="padding:4px 18px 16px;">${sessHTML}${actHTML}${watchHTML}${moodHTML}${journalHTML}${!hasDetail?'<div style="padding:16px 0;font-size:13px;color:var(--text3);text-align:center;">Nothing recorded this day.</div>':''}</div></div></div>`;
+
+    const hasDetail=sessHTML||schedHTML||actHTML||watchHTML||moodHTML||journalHTML;
+    return `<div class="hist-card"><div class="hist-rpt-head" onclick="toggleHistDetail('${k}')"><div style="flex:1;"><div style="display:flex;align-items:center;gap:8px;"><div class="hist-date">${fmtKey(k)}${isToday?' <span style="font-size:11px;color:var(--amber)">(Today)</span>':''}</div></div><div class="hist-chips" style="padding:6px 0 0;margin:0;">${chips.join('')||'<span style="font-size:12px;color:var(--text3)">No data</span>'}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">${score>0?`<div class="hist-score-badge">${score}</div>`:''}<span style="font-size:12px;color:var(--text3);" id="hist-arrow-${k}">${hasDetail?'▾':'—'}</span></div></div><div class="hist-detail" id="hd-${k}"><div style="padding:4px 18px 16px;">${sessHTML}${schedHTML}${actHTML}${watchHTML}${moodHTML}${journalHTML}${!hasDetail?'<div style="padding:16px 0;font-size:13px;color:var(--text3);text-align:center;">Nothing recorded this day.</div>':''}</div></div></div>`;
   }).join('');
 }
 function toggleHistDetail(k){const el=document.getElementById('hd-'+k);if(el)el.classList.toggle('open');}
@@ -1956,18 +2000,18 @@ function toggleHistDetail(k){const el=document.getElementById('hd-'+k);if(el)el.
 function clearToday(){
   if(!confirm('Clear all of today\'s data? Cannot be undone.'))return;
   localStorage.removeItem(STORE+currentKey);invalidateDayKeysCache();
-  // Also delete from Firestore
-  if(_currentUser){
-    window._fbSaveDay(_currentUser.uid,currentKey,emptyDay()).catch(()=>{});
-  }
+  if(_currentUser){window._fbSaveDay(_currentUser.uid,currentKey,emptyDay()).catch(()=>{});}
   data=emptyDay();_selectedPlanId=null;renderAll();renderSettings();renderPlanQuickPick();
 }
 function renderSettings(){
   const keys=getAllDayKeys();let totalBytes=0;
   for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&(k.startsWith(STORE)||k===META_K))totalBytes+=(localStorage.getItem(k)||'').length*2;}
   if(_currentUser){
-    const infoEl=document.getElementById('settings-user-info');
-    if(infoEl)infoEl.textContent=(_currentUser.displayName?_currentUser.displayName+' · ':'')+_currentUser.email;
+    const nameEl=document.getElementById('acct-name');
+    const emailEl=document.getElementById('acct-email');
+    if(nameEl)nameEl.textContent=_currentUser.displayName||'(no display name)';
+    if(emailEl)emailEl.textContent=_currentUser.email;
+    _applyStreak(meta.streak);
   }
   document.getElementById('storage-info').innerHTML=`
     <div class="mini-list-item"><div class="mli-left">Days tracked</div><div class="mli-right">${keys.length}</div></div>
@@ -2007,24 +2051,32 @@ function renderCarryToggles(){
 // ── EDIT SHEET ────────────────────────────────────────────────────────────────
 let _eid=null,_etype=null;
 function openEdit(){document.getElementById('edit-backdrop').classList.add('open');document.getElementById('edit-sheet').classList.add('open');}
-function closeEdit(){document.getElementById('edit-backdrop').classList.remove('open');document.getElementById('edit-sheet').classList.remove('open');_eid=null;_etype=null;}
+function closeEdit(){
+  document.getElementById('edit-backdrop').classList.remove('open');document.getElementById('edit-sheet').classList.remove('open');
+  _eid=null;_etype=null;
+  // Restore default edit actions
+  document.getElementById('edit-actions').innerHTML=`<button class="btn btn-primary" onclick="saveEdit()">Save Changes</button><button class="btn btn-ghost" onclick="closeEdit()">Cancel</button>`;
+}
 function editSession(id){
   const s=data.sessions.find(x=>x.id===id);if(!s)return;_eid=id;_etype='session';
   document.getElementById('edit-sheet-title').textContent='Edit Session';
   const planOpts='<option value="">— No plan —</option>'+meta.plans.map(p=>`<option value="${p.id}" ${s.planId===p.id?'selected':''}>${esc(p.name)}</option>`).join('');
   document.getElementById('edit-sheet-body').innerHTML=`<div class="form-group"><label class="field-label">Subject</label><input type="text" id="ei-subject" value="${esc(s.subject)}"></div><div class="form-group"><label class="field-label">Duration (hours)</label><input type="number" id="ei-dur" value="${s.duration}" min="0.25" max="24" step="0.25"></div><div class="form-group"><label class="field-label">Time</label><input type="time" id="ei-time" value="${s.time||''}" style="font-size:16px;width:100%;background:var(--surf3);color:var(--text);border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:12px 14px;min-height:48px;-webkit-appearance:none;color-scheme:dark;"></div><div class="form-group"><label class="field-label">Link to Plan</label><select id="ei-plan">${planOpts}</select></div><div class="form-group"><label class="field-label">Notes</label><input type="text" id="ei-notes" value="${esc(s.notes||'')}"></div>`;
+  document.getElementById('edit-actions').innerHTML=`<button class="btn btn-primary" onclick="saveEdit()">Save Changes</button><button class="btn btn-ghost" onclick="closeEdit()">Cancel</button>`;
   openEdit();
 }
 function editSchedule(id){
   const s=data.schedule.find(x=>x.id===id);if(!s)return;_eid=id;_etype='schedule';
   document.getElementById('edit-sheet-title').textContent='Edit Schedule Block';
   document.getElementById('edit-sheet-body').innerHTML=`<div class="form-group"><label class="field-label">Title</label><input type="text" id="ei-title" value="${esc(s.title)}"></div><div class="form-group"><label class="field-label">Type</label><select id="ei-type"><option value="study" ${s.type==='study'?'selected':''}>Study</option><option value="break" ${s.type==='break'?'selected':''}>Break</option><option value="activity" ${s.type==='activity'?'selected':''}>Activity</option><option value="watch" ${s.type==='watch'?'selected':''}>Watch</option></select></div><div class="form-group"><label class="field-label">Start Time</label><input type="time" id="ei-start" value="${s.start||''}" style="font-size:16px;width:100%;background:var(--surf3);color:var(--text);border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:12px 14px;min-height:48px;-webkit-appearance:none;color-scheme:dark;"></div><div class="form-group"><label class="field-label">End Time</label><input type="time" id="ei-end" value="${s.end||''}" style="font-size:16px;width:100%;background:var(--surf3);color:var(--text);border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:12px 14px;min-height:48px;-webkit-appearance:none;color-scheme:dark;"></div><div class="form-group"><label class="field-label">Description</label><input type="text" id="ei-desc" value="${esc(s.desc||'')}"></div>`;
+  document.getElementById('edit-actions').innerHTML=`<button class="btn btn-primary" onclick="saveEdit()">Save Changes</button><button class="btn btn-ghost" onclick="closeEdit()">Cancel</button>`;
   openEdit();
 }
 function editActivity(id){
   const a=data.activities.find(x=>x.id===id);if(!a)return;_eid=id;_etype='activity';
   document.getElementById('edit-sheet-title').textContent='Edit Activity';
   document.getElementById('edit-sheet-body').innerHTML=`<div class="form-group"><label class="field-label">Activity Name</label><input type="text" id="ei-name" value="${esc(a.name)}"></div><div class="form-group"><label class="field-label">Priority</label><select id="ei-priority"><option value="high" ${a.priority==='high'?'selected':''}>High</option><option value="med" ${a.priority==='med'?'selected':''}>Medium</option><option value="low" ${a.priority==='low'?'selected':''}>Low</option></select></div><div class="form-group"><label class="field-label">Time</label><input type="time" id="ei-time" value="${a.time||''}" style="font-size:16px;width:100%;background:var(--surf3);color:var(--text);border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:12px 14px;min-height:48px;-webkit-appearance:none;color-scheme:dark;"></div><div class="form-group"><label class="field-label">Notes</label><input type="text" id="ei-notes" value="${esc(a.notes||'')}"></div>`;
+  document.getElementById('edit-actions').innerHTML=`<button class="btn btn-primary" onclick="saveEdit()">Save Changes</button><button class="btn btn-ghost" onclick="closeEdit()">Cancel</button>`;
   openEdit();
 }
 function editWatch(id){
@@ -2032,6 +2084,7 @@ function editWatch(id){
   document.getElementById('edit-sheet-title').textContent='Edit Watch Item';
   const platOpts=Object.keys(PLAT).map(k=>`<option value="${k}" ${w.platform===k?'selected':''}>${PLAT[k].label}</option>`).join('');
   document.getElementById('edit-sheet-body').innerHTML=`<div class="form-group"><label class="field-label">Title</label><input type="text" id="ei-title" value="${esc(w.title)}"></div><div class="form-group"><label class="field-label">Platform</label><select id="ei-platform">${platOpts}</select></div><div class="form-group"><label class="field-label">Status</label><select id="ei-status"><option value="planned" ${w.status==='planned'?'selected':''}>Planned</option><option value="watching" ${w.status==='watching'?'selected':''}>Watching</option><option value="done" ${w.status==='done'?'selected':''}>Done</option></select></div><div class="form-group"><label class="field-label">Episode / Notes</label><input type="text" id="ei-notes" value="${esc(w.notes||'')}"></div>`;
+  document.getElementById('edit-actions').innerHTML=`<button class="btn btn-primary" onclick="saveEdit()">Save Changes</button><button class="btn btn-ghost" onclick="closeEdit()">Cancel</button>`;
   openEdit();
 }
 function editPlan(id){
@@ -2039,6 +2092,7 @@ function editPlan(id){
   document.getElementById('edit-sheet-title').textContent='Edit Plan';
   const courseOpts='<option value="">— Select Course —</option>'+meta.courses.map(c=>`<option value="${esc(c)}" ${p.course===c?'selected':''}>${esc(c)}</option>`).join('');
   document.getElementById('edit-sheet-body').innerHTML=`<div class="form-group"><label class="field-label">Plan Name</label><input type="text" id="ei-pname" value="${esc(p.name)}"></div><div class="form-group"><label class="field-label">Target Date</label><input type="date" id="ei-pdate" value="${p.date}" style="color-scheme:${_isLight?'light':'dark'};"></div><div class="form-group"><label class="field-label">Target Hours</label><input type="number" id="ei-phours" value="${p.targetHours||''}" min="1" max="500" step="0.5" placeholder="e.g. 40"></div><div class="form-group"><label class="field-label">Course Name</label><select id="ei-pcourse">${courseOpts}</select></div><div class="form-group"><label class="field-label">Notes</label><textarea id="ei-pnotes" style="min-height:70px;">${esc(p.notes||'')}</textarea></div>`;
+  document.getElementById('edit-actions').innerHTML=`<button class="btn btn-primary" onclick="saveEdit()">Save Changes</button><button class="btn btn-ghost" onclick="closeEdit()">Cancel</button>`;
   openEdit();
 }
 function g(id){const el=document.getElementById(id);return el?el.value.trim():'';}
@@ -2103,35 +2157,22 @@ document.addEventListener('visibilitychange',()=>{
 // ── BOOTSTRAP ─────────────────────────────────────────────────────────────────
 async function initApp(user){
   _currentUser=user;
-
-  // Show loading while syncing
   document.getElementById('auth-loading').classList.remove('hidden');
   document.getElementById('main-app').style.display='none';
   setLoadingMsg('Setting up…');
 
-  // Scope storage keys per user
   STORE='dp6_'+user.uid+'_day_';
   META_K='dp6_'+user.uid+'_meta';
   _dayKeysCache=null;
   currentKey=todayKey();
   _selectedPlanId=null;
 
-  // Update user pill
-  const name=user.displayName||user.email.split('@')[0];
-  const pillName=document.getElementById('user-pill-name');
-  if(pillName)pillName.textContent=name;
-
-  // 1. Migrate any pre-login / anonymous localStorage data
   await migrateLegacyData(user.uid);
-
-  // 2. Sync Firestore → localStorage (merge)
   await syncFromFirestore(user.uid);
-
-  // 3. Normal init from localStorage (now has merged data)
   loadMeta();
   loadDay(currentKey);
 
-  // Restore _selectedPlanId from goal label
+  // Restore _selectedPlanId
   (function(){
     const lbl=(data.goal.label||'').trim().toLowerCase();
     if(lbl){const m=meta.plans.find(p=>p.name.toLowerCase()===lbl&&daysUntil(p.date)>=0);if(m){_selectedPlanId=m.id;return;}}
@@ -2147,7 +2188,6 @@ async function initApp(user){
   renderPlanQuickPick();
   renderCourseSelect('plan-course','');
   renderCarryToggles();
-
   hideAuthScreen();
 }
 
@@ -2157,11 +2197,8 @@ function startAuthListener(){
     else{showAuthScreen();}
   });
 }
-if(window._fbReady){
-  startAuthListener();
-}else{
-  window.addEventListener('fb-ready',startAuthListener);
-}
+if(window._fbReady){startAuthListener();}
+else{window.addEventListener('fb-ready',startAuthListener);}
 </script>
 </body>
 </html>
