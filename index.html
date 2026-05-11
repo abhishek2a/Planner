@@ -237,6 +237,8 @@ body{font-family:-apple-system,'DM Sans',sans-serif;background:var(--bg);color:v
 
 /* ── BOTTOM NAV (mobile default) ── */
 .bottom-nav{
+  /* FIX: order:1 forces nav BELOW main-content (order:0) on mobile flex-column */
+  order:1;
   flex-shrink:0;background:rgba(8,7,6,.85);
   border-top:1px solid var(--glass-bdr);
   padding-bottom:var(--sab);
@@ -274,10 +276,11 @@ body{font-family:-apple-system,'DM Sans',sans-serif;background:var(--bg);color:v
     transform:none;box-shadow:none;
   }
   .bottom-nav{
+    order:-1;/* sidebar on left */
     flex-direction:column;width:var(--sidebar-w);flex-shrink:0;
     border-top:none;border-right:1px solid var(--glass-bdr);
     padding-bottom:0;padding-top:calc(var(--sat) + 24px);
-    align-items:stretch;justify-content:flex-start;order:-1;gap:4px;
+    align-items:stretch;justify-content:flex-start;gap:4px;
   }
   body.light .bottom-nav{box-shadow:1px 0 0 var(--border);}
   .bottom-nav::before{
@@ -1185,7 +1188,6 @@ function doSignup(){clearAuthErr();const name=document.getElementById('su-name')
 function doLogout(){if(!confirm('Sign out of Planner?'))return;window._fbLogout().then(()=>{_currentUser=null;STORE='dp6_day_';META_K='dp6_meta';data=emptyDay();meta={streak:0,habits:[],plans:[],courses:['CSEB'],autoCarryActivities:false,autoCarryHabits:false};_selectedPlanId=null;showAuthScreen();});}
 document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const ls=document.getElementById('auth-screen');if(ls&&!ls.classList.contains('hidden')){const tab=document.getElementById('tab-login').classList.contains('active');if(tab)doLogin();else doSignup();}});
 
-// ── FIX: corrected ternary — was (_currentUser.displayName||')' missing closing paren
 function openChangeUsername(){
   _eid='change-username';_etype='account-username';
   document.getElementById('edit-sheet-title').textContent='Change Display Name';
