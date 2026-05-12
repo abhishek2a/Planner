@@ -776,6 +776,33 @@ select option{background:var(--surf2);}
   .wa-recent-item{padding:10px 24px;}
   .wa-top-pill{margin:0 24px 10px;}
 }
+/* ── UPDATE BANNER ── */
+#update-banner{
+  position:fixed;bottom:calc(var(--nav-h) + var(--sab) + 14px);
+  left:50%;transform:translateX(-50%) translateY(20px);
+  z-index:300;display:none;
+  background:var(--surf2);border:1px solid var(--amber-bdr);
+  border-radius:var(--r);padding:14px 16px;
+  box-shadow:0 8px 40px rgba(0,0,0,.55);
+  width:calc(100% - 40px);max-width:380px;
+}
+#update-banner.show{display:block;animation:updateIn .3s var(--spring) both;}
+@keyframes updateIn{from{opacity:0;transform:translateX(-50%) translateY(24px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+.upd-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.upd-dot{width:9px;height:9px;border-radius:50%;background:var(--amber);flex-shrink:0;box-shadow:0 0 8px var(--amber);animation:pulse 1.6s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.upd-title{font-size:13px;font-weight:700;color:var(--text);flex:1;}
+.upd-ver{font-size:.6rem;font-family:'DM Mono',monospace;color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-bdr);border-radius:99px;padding:2px 8px;font-weight:700;}
+.upd-log{font-size:11px;color:var(--text3);line-height:1.6;margin-bottom:12px;padding-left:4px;}
+.upd-log li{list-style:none;position:relative;padding-left:12px;}
+.upd-log li::before{content:'·';position:absolute;left:0;color:var(--amber);}
+.upd-btns{display:flex;gap:8px;}
+.upd-btns .btn{flex:1;min-height:40px;font-size:13px;}
+@media(min-width:768px) and (hover:hover) and (pointer:fine){
+  #update-banner{left:calc(var(--sidebar-w) + 24px);transform:none;bottom:24px;}
+  #update-banner.show{animation:updateInDesk .3s var(--spring) both;}
+  @keyframes updateInDesk{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:none;}}
+}
 .main-content{display:flex;flex-direction:column;flex:1;min-width:0;overflow:hidden;}
 </style>
 </head>
@@ -1152,7 +1179,7 @@ select option{background:var(--surf2);}
                 <span style="font-size:18px;">📱</span>
                 <div>
                   <div style="font-size:13px;font-weight:600;color:var(--text);">Planner</div>
-                  <div style="font-size:11px;color:var(--text3);margin-top:1px;">Version 2.9.2 · Build 20260511</div>
+                  <div style="font-size:11px;color:var(--text3);margin-top:1px;" id="settings-ver-lbl">Version 2.9.3 · Build 20260511</div>
                 </div>
               </div>
               <div class="mli-right">
@@ -1197,6 +1224,26 @@ select option{background:var(--surf2);}
     <button class="pwa-x" onclick="dismissPwaBanner()">✕</button>
   </div>
 
+  <!-- ── UPDATE BANNER ── -->
+  <div id="update-banner">
+    <div class="upd-head">
+      <div class="upd-dot"></div>
+      <div class="upd-title">New Update Available</div>
+      <div class="upd-ver" id="upd-ver-pill">v2.9.3</div>
+    </div>
+    <ul class="upd-log" id="upd-changelog">
+      <li>Improved Analytics Dashboard</li>
+      <li>Media Overview in Analytics tab</li>
+      <li>Watch filter &amp; insights fixed</li>
+      <li>Smarter greeting with username</li>
+      <li>History delete fixed</li>
+    </ul>
+    <div class="upd-btns">
+      <button class="btn btn-primary" onclick="applyUpdate()">Update Now</button>
+      <button class="btn btn-ghost" onclick="dismissUpdate()">Later</button>
+    </div>
+  </div>
+
   <div class="edit-backdrop" id="edit-backdrop" onclick="closeEdit()"></div>
   <div class="edit-sheet" id="edit-sheet">
     <div class="edit-sheet-handle"></div>
@@ -1218,6 +1265,66 @@ select option{background:var(--surf2);}
   const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
   document.getElementById('pwa-manifest').href=URL.createObjectURL(blob);
 })();
+
+/* ── App Version ── */
+const APP_VERSION = '2.9.3';
+const CHANGELOG = [
+  'Improved Analytics Dashboard',
+  'Media Overview moved to Analytics tab',
+  'Watch filter & insights fixed',
+  'Smarter greeting with username',
+  'History delete fixed'
+];
+
+/* ── Service Worker Registration & Update Detection ── */
+let _swWaiting = null;
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      /* Already waiting (SW was updated while app was closed) */
+      if (reg.waiting) { _swWaiting = reg.waiting; showUpdateBanner(); }
+
+      /* New SW found during this session */
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            _swWaiting = nw;
+            showUpdateBanner();
+          }
+        });
+      });
+
+      /* Listen for controllerchange (after skipWaiting) → reload */
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload();
+      });
+
+      /* Poll for updates every 60 s when tab is visible */
+      setInterval(() => { if (document.visibilityState === 'visible') reg.update(); }, 60000);
+    }).catch(() => {});
+  });
+}
+function showUpdateBanner() {
+  const verEl = document.getElementById('upd-ver-pill');
+  if (verEl) verEl.textContent = 'v' + APP_VERSION;
+  const logEl = document.getElementById('upd-changelog');
+  if (logEl) logEl.innerHTML = CHANGELOG.map(c => `<li>${c}</li>`).join('');
+  document.getElementById('update-banner').classList.add('show');
+}
+function applyUpdate() {
+  dismissUpdate();
+  if (_swWaiting) {
+    _swWaiting.postMessage({ type: 'SKIP_WAITING' });
+    /* controllerchange listener above will reload */
+  } else {
+    window.location.reload();
+  }
+}
+function dismissUpdate() {
+  document.getElementById('update-banner').classList.remove('show');
+}
 let _deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();_deferredPrompt=e;if(!localStorage.getItem('pwa-dismissed'))setTimeout(()=>document.getElementById('pwa-banner').classList.add('show'),2000);});
 function pwaTriggerInstall(){dismissPwaBanner();if(_deferredPrompt){_deferredPrompt.prompt();_deferredPrompt=null;}}
@@ -1411,7 +1518,7 @@ function renderHistory(){const keys=getAllDayKeys();const el=document.getElement
 function toggleHistDetail(k){const el=document.getElementById('hd-'+k);if(el)el.classList.toggle('open');}
 
 function clearToday(){if(!confirm('Clear all of today\'s data? Cannot be undone.'))return;localStorage.removeItem(STORE+currentKey);invalidateDayKeysCache();if(_currentUser){window._fbSaveDay(_currentUser.uid,currentKey,emptyDay()).catch(()=>{});}data=emptyDay();_selectedPlanId=null;renderAll();renderSettings();renderPlanQuickPick();}
-function renderSettings(){const keys=getAllDayKeys();let totalBytes=0;for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&(k.startsWith(STORE)||k===META_K))totalBytes+=(localStorage.getItem(k)||'').length*2;}if(_currentUser){const nameEl=document.getElementById('acct-name');const emailEl=document.getElementById('acct-email');if(nameEl)nameEl.textContent=_currentUser.displayName||'(no display name)';if(emailEl)emailEl.textContent=_currentUser.email;_applyStreak(meta.streak);}document.getElementById('storage-info').innerHTML=`<div class="mini-list-item"><div class="mli-left">Days tracked</div><div class="mli-right">${keys.length}</div></div><div class="mini-list-item"><div class="mli-left">Local storage used</div><div class="mli-right">${(totalBytes/1024).toFixed(1)} KB</div></div><div class="mini-list-item"><div class="mli-left">Plans created</div><div class="mli-right">${meta.plans.length}</div></div><div class="mini-list-item"><div class="mli-left">Courses saved</div><div class="mli-right">${meta.courses.length}</div></div><div class="mini-list-item"><div class="mli-left">Current streak</div><div class="mli-right">${meta.streak} days</div></div>`;}
+function renderSettings(){const keys=getAllDayKeys();let totalBytes=0;for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&(k.startsWith(STORE)||k===META_K))totalBytes+=(localStorage.getItem(k)||'').length*2;}if(_currentUser){const nameEl=document.getElementById('acct-name');const emailEl=document.getElementById('acct-email');if(nameEl)nameEl.textContent=_currentUser.displayName||'(no display name)';if(emailEl)emailEl.textContent=_currentUser.email;_applyStreak(meta.streak);}const verLbl=document.getElementById('settings-ver-lbl');if(verLbl)verLbl.textContent='Version '+APP_VERSION+' · Build 20260511';document.getElementById('storage-info').innerHTML=`<div class="mini-list-item"><div class="mli-left">Days tracked</div><div class="mli-right">${keys.length}</div></div><div class="mini-list-item"><div class="mli-left">Local storage used</div><div class="mli-right">${(totalBytes/1024).toFixed(1)} KB</div></div><div class="mini-list-item"><div class="mli-left">Plans created</div><div class="mli-right">${meta.plans.length}</div></div><div class="mini-list-item"><div class="mli-left">Courses saved</div><div class="mli-right">${meta.courses.length}</div></div><div class="mini-list-item"><div class="mli-left">Current streak</div><div class="mli-right">${meta.streak} days</div></div><div class="mini-list-item"><div class="mli-left">App version</div><div class="mli-right"><span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--amber);">v${APP_VERSION}</span></div></div>`;}
 
 function initDate(){const now=new Date();document.getElementById('date-pill').textContent=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][now.getDay()]+' '+MTHS[now.getMonth()]+' '+now.getDate();const name=_currentUser?(_currentUser.displayName||_currentUser.email.split('@')[0]):'';document.getElementById('header-sub').textContent=getGreeting(now,name);}
 function getGreeting(now,name){const h=now.getHours();const g=h>=4&&h<12?'Good morning':h>=12&&h<16?'Good afternoon':h>=16&&h<22?'Good evening':'Good night';return g+(name?', '+name:'')+'!';}
