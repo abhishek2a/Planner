@@ -1285,10 +1285,24 @@ const CHANGELOG = [
 
 /* ── Service Worker Registration & Update Detection ── */
 let _swWaiting = null;
+let _swRegistration = null;
+
+/* controllerchange MUST be registered before SW registration so it catches
+   the event even if it fires synchronously on mobile */
 if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload();
+  });
+
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').then(reg => {
-      /* Already waiting (SW was updated while app was closed) */
+    navigator.serviceWorker.register('./sw.js', {
+      /* updateViaCache:'none' forces the browser to always fetch sw.js
+         from the network, not from HTTP cache — critical on Android */
+      updateViaCache: 'none'
+    }).then(reg => {
+      _swRegistration = reg;
+
+      /* Already waiting (SW updated while app was closed / in background) */
       if (reg.waiting) { _swWaiting = reg.waiting; showUpdateBanner(); }
 
       /* New SW found during this session */
@@ -1303,12 +1317,12 @@ if ('serviceWorker' in navigator) {
         });
       });
 
-      /* Listen for controllerchange (after skipWaiting) → reload */
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        window.location.reload();
+      /* Re-check on every tab focus — catches updates from other tabs/windows */
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update();
       });
 
-      /* Poll for updates every 60 s when tab is visible */
+      /* Periodic poll as backup (60 s) */
       setInterval(() => { if (document.visibilityState === 'visible') reg.update(); }, 60000);
     }).catch(() => {});
   });
