@@ -1338,10 +1338,19 @@ function showUpdateBanner() {
 }
 function applyUpdate() {
   dismissUpdate();
+  /* Step 1: clear all caches so Safari iOS can't serve stale shell */
+  const clearCaches = () => caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k)))).catch(() => {});
+  /* Step 2: hard navigate (not reload) — bypasses Safari bfcache */
+  const hardNav = () => { window.location.href = window.location.href.split('?')[0] + '?_u=' + Date.now(); };
   if (_swWaiting) {
-    _swWaiting.postMessage({ type: 'SKIP_WAITING' });
+    clearCaches().then(() => {
+      /* Safari iOS may not fire controllerchange — force nav after 1.2 s regardless */
+      const fallback = setTimeout(hardNav, 1200);
+      navigator.serviceWorker.addEventListener('controllerchange', () => { clearTimeout(fallback); hardNav(); }, { once: true });
+      _swWaiting.postMessage({ type: 'SKIP_WAITING' });
+    });
   } else {
-    window.location.reload();
+    clearCaches().then(hardNav);
   }
 }
 function dismissUpdate() {
@@ -1367,18 +1376,19 @@ async function checkForUpdates() {
   }
   _setCheckStatus('checking', 'Checking…');
   try {
-    const reg = await navigator.serviceWorker.getRegistration('./sw.js');
-    if (!reg) { _setCheckStatus('latest', 'You are using the latest version.'); return; }
-    /* If already waiting, an update is ready */
+    /* Try both scope variants — Safari can register under either */
+    let reg = await navigator.serviceWorker.getRegistration('./sw.js');
+    if (!reg) reg = await navigator.serviceWorker.getRegistration('./');
+    if (!reg && _swRegistration) reg = _swRegistration;
+    if (!reg) { _setCheckStatus('latest', '✓ You are using the latest version.'); return; }
     if (reg.waiting) { _swWaiting = reg.waiting; showUpdateBanner(); return; }
-    /* Trigger a network check */
     await reg.update();
-    /* Give updatefound event a moment to fire */
-    await new Promise(r => setTimeout(r, 2000));
+    /* Safari needs more time — 3 s */
+    await new Promise(r => setTimeout(r, 3000));
     if (reg.waiting) { _swWaiting = reg.waiting; showUpdateBanner(); }
     else { _setCheckStatus('latest', '✓ You are using the latest version.'); }
   } catch (e) {
-    _setCheckStatus('idle', 'Could not check. Check your connection.');
+    _setCheckStatus('idle', 'Could not check. Ensure you are online.');
   }
 }
 let _deferredPrompt=null;
