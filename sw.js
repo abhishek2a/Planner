@@ -1,6 +1,6 @@
-/* ── Planner Service Worker v2.9.5 ── */
+/* ── Planner Service Worker v2.9.5A ── */
 /* Safari iOS compatible — no auto skipWaiting */
-const APP_VERSION = '2.9.5';
+const APP_VERSION = '2.9.5A';
 const CACHE_NAME  = 'planner-v' + APP_VERSION;
 
 const PRECACHE = ['./', './index.html'];
