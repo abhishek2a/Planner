@@ -1276,7 +1276,7 @@ select option{background:var(--surf2);}
 })();
 
 /* ── App Version ── */
-const APP_VERSION = '2.9.5';
+const APP_VERSION = '2.9.5A';
 const CHANGELOG = [
   'Major performance & stability pass',
   'Faster tab switching & analytics',
@@ -1601,7 +1601,7 @@ function deleteItemFromDay(arr,id,rerenderSecs){const result=getItemFromAnyDay(a
 const _sectionMap={sessions:['sessions','overview','score'],schedule:['schedule','overview'],activities:['activities','overview','score'],watchlist:['watch','overview']};
 function findItemDay(arr,id){if(data[arr]&&data[arr].find(x=>x.id===id))return currentKey;const keys=getAllDayKeys();for(const k of keys){if(k===currentKey)continue;const d=getDayData(k);if(d&&d[arr]&&d[arr].find(x=>x.id===id))return k;}return null;}
 function mutateItemDay(arr,id,mutateFn,rerenderSecs){const dayKey=findItemDay(arr,id);if(!dayKey)return;if(dayKey===currentKey){mutateFn(data[arr]);saveDay(rerenderSecs);}else{const d=getDayData(dayKey);if(!d||!d[arr])return;mutateFn(d[arr]);saveDayToKey(dayKey,d);render(rerenderSecs);const histEl=document.getElementById('more-history');if(histEl&&histEl.style.display!=='none')renderHistory();}}
-function removeItem(arr,id){deleteItemFromDay(arr,id,_sectionMap[arr]||null);}
+function removeItem(arr,id){deleteItemFromDay(arr,id,_sectionMap[arr]||null);if(arr==='watchlist')_invalidateWatchCache();}
 function toggleDone(id){mutateItemDay('activities',id,a=>{const x=a.find(i=>i.id===id);if(x)x.done=!x.done;},['activities','overview','score']);}
 function changeWatchStatus(id,val){mutateItemDay('watchlist',id,a=>{const x=a.find(i=>i.id===id);if(x)x.status=val;},['watch']);_invalidateWatchCache();}
 
@@ -1610,28 +1610,53 @@ function isSchedPast(s){if(s.done)return true;const ref=s.end||s.start;if(!ref)r
 function isSchedNow(s){if(!s.start)return false;const now=new Date(),ms=now.getHours()*60+now.getMinutes();const[sh,sm]=s.start.split(':'),startMin=+sh*60+ +sm;const endMin=s.end?(()=>{const[eh,em]=s.end.split(':');return +eh*60+ +em;})():startMin+60;return ms>=startMin&&ms<endMin;}
 function toggleSchedDone(id){mutateItemDay('schedule',id,a=>{const x=a.find(i=>i.id===id);if(x)x.done=!x.done;},['schedule','overview']);}
 function renderSchedule(){const el=document.getElementById('schedule-list');if(!data.schedule.length){el.innerHTML=emptyHTML('🗓','No blocks yet');return;}const barC={study:'bar-amber',break:'bar-teal',activity:'bar-indigo',watch:'bar-rose'};el.innerHTML=data.schedule.map(s=>{const past=isSchedPast(s),live=isSchedNow(s)&&!s.done,manualDone=!!s.done;const statusBadge=live?`<span class="badge" style="background:rgba(61,191,114,0.15);color:var(--green);border:1px solid var(--green-bdr);margin-right:4px;">▶ Now</span>`:(past?`<span class="badge" style="background:var(--surf3);color:var(--text3);border:1px solid var(--border2);margin-right:4px;">✓ Done</span>`:'');return `<div class="list-item" style="${past?'opacity:0.45;':''}${live?'background:rgba(61,191,114,0.04);':''}"><div class="item-bar ${barC[s.type]||'bar-amber'}" style="${live?'background:var(--green);':''}"></div><div class="item-time">${fmt(s.start)}${s.end?' – '+fmt(s.end):''}</div><div class="item-info"><div class="item-title" style="${past?'text-decoration:line-through;':''}">${esc(s.title)}</div>${s.desc?'<div class="item-sub">'+esc(s.desc)+'</div>':''}</div>${statusBadge}<button onclick="toggleSchedDone('${s.id}')" style="background:${manualDone?'var(--green)':'var(--surf3)'};border:1.5px solid ${manualDone?'var(--green)':'var(--border2)'};color:${manualDone?'#fff':'var(--text3)'};border-radius:8px;width:28px;height:28px;font-size:13px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;">${manualDone?'✓':'○'}</button><button class="btn-edit" style="margin-left:4px;" onclick="editSchedule('${s.id}')">✏️</button><button class="btn-del" style="margin-left:4px;" onclick="removeItem('schedule','${s.id}')">✕</button></div>`;}).join('');}
+function _getWeekActStats(){
+  const keys=getWeekKeys(0);let sH=0,sD=0,wH=0,wD=0,sDone=0,wDone=0;
+  keys.forEach(k=>{
+    const d=getDayData(k)||{activities:[]};
+    (d.activities||[]).forEach(a=>{
+      if(a.category==='sleep'){sH+=(a.duration||0);sD++;if(a.done)sDone++;}
+      else if(a.category==='workout'){wH+=(a.duration||0);wD++;if(a.done)wDone++;}
+    });
+  });
+  return{sH:Math.round(sH*10)/10,sD,wH:Math.round(wH*10)/10,wD,sDone,wDone};
+}
 function renderActivities(){
   const el=document.getElementById('activity-list');
-  const catIcon={sleep:'😴',workout:'💪',general:''}; 
-  const catColor={sleep:'var(--indigo)',workout:'var(--teal)',general:''};
-  if(!data.activities.length){el.innerHTML=emptyHTML('✅','No activities yet');document.getElementById('act-stats-grid').style.display='none';return;}
+  const statsEl=document.getElementById('act-stats-grid');
+  const catIcon={sleep:'😴',workout:'💪',general:''};
+  if(!data.activities.length){el.innerHTML=emptyHTML('✅','No activities yet');statsEl.style.display='none';return;}
   el.innerHTML=data.activities.map(a=>{
     const icon=catIcon[a.category||'general']||'';
-    const cc=catColor[a.category||'general']||'';
     const durTxt=a.duration?`<span style="font-size:11px;color:var(--amber);margin-left:4px;">${a.duration}h</span>`:'';
-    return `<div class="act-card ${a.done?'completed':''}"><div class="act-top"><div class="act-name">${icon?`<span style="margin-right:4px;">${icon}</span>`:''}${esc(a.name)}${a.time?'<div style="font-size:12px;color:var(--text3);font-weight:400;">@ '+fmt(a.time)+'</div>':''}${a.carriedFrom?'<div style="font-size:10px;color:var(--indigo);margin-top:2px;">🔄 carried from '+fmtKey(a.carriedFrom).split(',')[0]+'</div>':''}</div><div style="display:flex;align-items:center;gap:6px;">${durTxt}<div class="priority-dot dot-${a.priority}"></div></div></div>${a.notes?'<div class="act-note">'+esc(a.notes)+'</div>':''}<div class="act-foot"><label class="check-row"><input type="checkbox" ${a.done?'checked':''} onchange="toggleDone('${a.id}')"> Done</label><div style="display:flex;gap:6px;"><button class="btn-edit" onclick="editActivity('${a.id}')">✏️</button><button class="btn-del" onclick="removeItem('activities','${a.id}')">✕</button></div></div></div>`;
+    return `<div class="act-card ${a.done?'completed':''}"><div class="act-top"><div class="act-name">${icon?`<span>${icon} </span>`:''}${esc(a.name)}${a.time?`<div style="font-size:12px;color:var(--text3);font-weight:400;">@ ${fmt(a.time)}</div>`:''}${a.carriedFrom?`<div style="font-size:10px;color:var(--indigo);margin-top:2px;">🔄 from ${fmtKey(a.carriedFrom).split(',')[0]}</div>`:''}</div><div style="display:flex;align-items:center;gap:6px;">${durTxt}<div class="priority-dot dot-${a.priority}"></div></div></div>${a.notes?`<div class="act-note">${esc(a.notes)}</div>`:''}<div class="act-foot"><label class="check-row"><input type="checkbox" ${a.done?'checked':''} onchange="toggleDone('${a.id}')"> Done</label><div style="display:flex;gap:6px;"><button class="btn-edit" onclick="editActivity('${a.id}')">✏️</button><button class="btn-del" onclick="removeItem('activities','${a.id}')">✕</button></div></div></div>`;
   }).join('');
-  /* Sleep & Workout summary pills */
-  const sleepActs=data.activities.filter(a=>a.category==='sleep');
-  const workActs=data.activities.filter(a=>a.category==='workout');
-  const sleepHrs=sleepActs.reduce((s,a)=>s+(a.duration||0),0);
-  const workHrs=workActs.reduce((s,a)=>s+(a.duration||0),0);
-  const statsEl=document.getElementById('act-stats-grid');
-  if(sleepActs.length||workActs.length){
+  /* 7-day sleep/workout summary */
+  const ws=_getWeekActStats();
+  const todaySleep=data.activities.filter(a=>a.category==='sleep').reduce((s,a)=>s+(a.duration||0),0);
+  const todayWork=data.activities.filter(a=>a.category==='workout').reduce((s,a)=>s+(a.duration||0),0);
+  const hasSW=ws.sD>0||ws.wD>0||todaySleep>0||todayWork>0;
+  if(hasSW){
+    const sleepPct=Math.min(100,Math.round((ws.sH/(7*7))*100));
+    const workPct=Math.min(100,Math.round((ws.wH/9)*100));
     statsEl.style.display='grid';
-    statsEl.innerHTML=`${sleepActs.length?`<div class="stat-card sc-indigo"><div class="stat-val" style="font-size:1.4rem;">${sleepHrs?sleepHrs+'h':''+sleepActs.length}</div><div class="stat-lbl">😴 Sleep${sleepActs.filter(a=>a.done).length?` · ${sleepActs.filter(a=>a.done).length} done`:''}</div></div>`:''} ${workActs.length?`<div class="stat-card sc-teal"><div class="stat-val" style="font-size:1.4rem;">${workHrs?workHrs+'h':''+workActs.length}</div><div class="stat-lbl">💪 Workout${workActs.filter(a=>a.done).length?` · ${workActs.filter(a=>a.done).length} done`:''}</div></div>`:''}`;
+    statsEl.innerHTML=`
+      ${ws.sD>0||todaySleep?`<div class="stat-card sc-indigo"><div class="stat-val" style="font-size:1.3rem;">${todaySleep?todaySleep+'h':'—'}</div><div class="stat-lbl">😴 Today Sleep</div></div><div class="stat-card sc-indigo"><div class="stat-val" style="font-size:1.3rem;">${ws.sH?ws.sH+'h':'0'}</div><div class="stat-lbl">Week Sleep (${ws.sD}d)</div></div>`:''}
+      ${ws.wD>0||todayWork?`<div class="stat-card sc-teal"><div class="stat-val" style="font-size:1.3rem;">${todayWork?todayWork+'h':'—'}</div><div class="stat-lbl">💪 Today Workout</div></div><div class="stat-card sc-teal"><div class="stat-val" style="font-size:1.3rem;">${ws.wH?ws.wH+'h':'0'}</div><div class="stat-lbl">Week Workout (${ws.wD}d)</div></div>`:''}
+    `;
+    /* Progress bars */
+    const progHTML=[
+      ws.sD>0?`<div class="prog-wrap"><div class="prog-row"><span>😴 Weekly Sleep Goal (49h)</span><span>${ws.sH}h / 49h · ${sleepPct}%</span></div><div class="prog-bar"><div class="prog-fill" style="width:${sleepPct}%;background:linear-gradient(90deg,#3848c0,var(--indigo))"></div></div></div>`:'',
+      ws.wD>0?`<div class="prog-wrap"><div class="prog-row"><span>💪 Weekly Workout Goal (9h)</span><span>${ws.wH}h / 9h · ${workPct}%</span></div><div class="prog-bar"><div class="prog-fill pf-teal" style="width:${workPct}%"></div></div></div>`:''
+    ].join('');
+    statsEl.insertAdjacentHTML('afterend','<div id="act-prog-wrap" style="margin-top:4px;">'+progHTML+'</div>');
+    /* remove old prog wrap if exists to avoid duplication */
+    const old=document.querySelectorAll('#act-prog-wrap');
+    if(old.length>1)old[0].remove();
   } else {
     statsEl.style.display='none';
+    const old=document.getElementById('act-prog-wrap');
+    if(old)old.remove();
   }
 }
 let _watchFilter='all';
@@ -1755,7 +1780,7 @@ function toggleHistDetail(k){
   }
 }
 
-function clearToday(){if(!confirm('Clear all of today\'s data? Cannot be undone.'))return;localStorage.removeItem(STORE+currentKey);invalidateDayKeysCache();if(_currentUser){window._fbSaveDay(_currentUser.uid,currentKey,emptyDay()).catch(()=>{});}data=emptyDay();_selectedPlanId=null;renderAll();renderSettings();renderPlanQuickPick();}
+function clearToday(){if(!confirm('Clear all of today\'s data? Cannot be undone.'))return;localStorage.removeItem(STORE+currentKey);invalidateDayKeysCache();_invalidatePlanCache();_invalidateWatchCache();if(_currentUser){window._fbSaveDay(_currentUser.uid,currentKey,emptyDay()).catch(()=>{});}data=emptyDay();_selectedPlanId=null;renderAll();renderSettings();renderPlanQuickPick();}
 function renderSettings(){const keys=getAllDayKeys();let totalBytes=0;for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&(k.startsWith(STORE)||k===META_K))totalBytes+=(localStorage.getItem(k)||'').length*2;}if(_currentUser){const nameEl=document.getElementById('acct-name');const emailEl=document.getElementById('acct-email');if(nameEl)nameEl.textContent=_currentUser.displayName||'(no display name)';if(emailEl)emailEl.textContent=_currentUser.email;_applyStreak(meta.streak);}const verLbl=document.getElementById('settings-ver-lbl');if(verLbl)verLbl.textContent='Version '+APP_VERSION+' · Build 20260511';document.getElementById('storage-info').innerHTML=`<div class="mini-list-item"><div class="mli-left">Days tracked</div><div class="mli-right">${keys.length}</div></div><div class="mini-list-item"><div class="mli-left">Local storage used</div><div class="mli-right">${(totalBytes/1024).toFixed(1)} KB</div></div><div class="mini-list-item"><div class="mli-left">Plans created</div><div class="mli-right">${meta.plans.length}</div></div><div class="mini-list-item"><div class="mli-left">Courses saved</div><div class="mli-right">${meta.courses.length}</div></div><div class="mini-list-item"><div class="mli-left">Current streak</div><div class="mli-right">${meta.streak} days</div></div><div class="mini-list-item"><div class="mli-left">App version</div><div class="mli-right"><span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--amber);">v${APP_VERSION}</span></div></div>`;}
 
 function initDate(){const now=new Date();document.getElementById('date-pill').textContent=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][now.getDay()]+' '+MTHS[now.getMonth()]+' '+now.getDate();const name=_currentUser?(_currentUser.displayName||_currentUser.email.split('@')[0]):'';document.getElementById('header-sub').textContent=getGreeting(now,name);}
