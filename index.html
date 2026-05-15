@@ -976,7 +976,7 @@ select option{background:var(--surf2);}
             <div class="panel-label">Goal Settings</div>
             <div class="form-group">
               <label class="field-label">Study Goal (hours)</label>
-              <input type="number" id="study-goal" min="0.5" max="24" step="0.5" value="6" oninput="saveGoal()">
+              <input type="number" id="study-goal" min="0.5" step="0.5" placeholder="e.g. 6" oninput="saveGoal()">
             </div>
             <div class="form-group">
               <label class="field-label" style="display:flex;align-items:center;justify-content:space-between;">
@@ -1665,7 +1665,7 @@ function setRating(n){data.rating=n;restoreRating();saveDay(['overview','rating'
 function restoreRating(){document.querySelectorAll('.star-btn').forEach(b=>b.classList.toggle('lit',parseInt(b.dataset.r)<=(data.rating||0)));}
 function saveJournal(){data.journal=document.getElementById('journal-text').value;saveDay(['overview']);const btn=document.querySelector('.journal-foot .btn-ghost');btn.textContent='✓';setTimeout(()=>btn.textContent='Save',1500);}
 function restoreJournal(){document.getElementById('journal-text').value=data.journal||'';}
-function saveGoal(){data.goal.hours=parseFloat(document.getElementById('study-goal').value)||6;data.goal.label=document.getElementById('goal-label').value;syncPlanFromGoalLabel(data.goal.label);saveDay(['sessions','overview','score']);}
+function saveGoal(){data.goal.hours=Math.max(0.5,parseFloat(document.getElementById('study-goal').value)||0.5);data.goal.label=document.getElementById('goal-label').value;syncPlanFromGoalLabel(data.goal.label);saveDay(['sessions','overview','score']);}
 function sumHours(sessions){return Math.round(sessions.reduce((s,x)=>s+x.duration,0)*100)/100;}
 
 function calcScoreFor(d){const hrs=sumHours(d.sessions||[]),goal=(d.goal&&d.goal.hours)||6;const studyPct=Math.min(1,hrs/goal),tasksAll=(d.activities||[]).length,tasksDone=(d.activities||[]).filter(a=>a.done).length;const taskPct=tasksAll?tasksDone/tasksAll:0,ratingPct=(d.rating||0)/5;return{score:Math.round(studyPct*40+taskPct*35+ratingPct*25),studyPct,taskPct,ratingPct};}
