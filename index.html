@@ -1531,8 +1531,45 @@ function getPlanTotalHours(planId){if(_planHoursCache[planId]!==undefined)return
 let _watchItemsCache=null;
 function getAllWatchItems(){if(_watchItemsCache)return _watchItemsCache;const all=[];const seen=new Set();(data.watchlist||[]).forEach(w=>{seen.add(w.id);all.push({...w,dayKey:currentKey});});getAllDayKeys().forEach(k=>{if(k===currentKey)return;const d=getDayData(k);if(!d||!d.watchlist)return;d.watchlist.forEach(w=>{if(!seen.has(w.id)){seen.add(w.id);all.push({...w,dayKey:k});}});});_watchItemsCache=all;return all;}
 function _invalidateWatchCache(){_watchItemsCache=null;}
-async function manualSync(){if(!_currentUser){alert('Not signed in.');return;}showSyncState('syncing');try{await window._fbSaveMeta(_currentUser.uid,meta);const keys=getAllDayKeys();for(const k of keys){const d=getDayData(k);if(d)await window._fbSaveDay(_currentUser.uid,k,d);}showSyncState('synced');}catch(e){showSyncState('error');}}
-function mergeArrayById(local,remote){const map=new Map();(local||[]).forEach(x=>map.set(x.id,x));(remote||[]).forEach(x=>{if(!map.has(x.id))map.set(x.id,x);});return Array.from(map.values());}
+async function manualSync(){
+  if(!_currentUser){alert('Not signed in.');return;}
+  showSyncState('syncing');
+  try{
+    /* 1. Pull from Firestore + merge into localStorage */
+    await syncFromFirestore(_currentUser.uid);
+    /* 2. Reload current day into memory from merged localStorage */
+    loadMeta();
+    loadDay(currentKey);
+    /* 3. Invalidate all caches */
+    invalidateDayKeysCache();
+    _invalidatePlanCache();
+    _invalidateWatchCache();
+    /* 4. Push merged local back up */
+    await window._fbSaveMeta(_currentUser.uid,meta);
+    const keys=getAllDayKeys();
+    for(const k of keys){const d=getDayData(k);if(d)await window._fbSaveDay(_currentUser.uid,k,d);}
+    showSyncState('synced');
+    /* 5. Re-render everything with fresh data */
+    renderAll();
+    renderPlanQuickPick();
+    if(_subActive('more-weekly'))renderWatchAnalytics();
+  }catch(e){showSyncState('error');}
+}
+function mergeArrayById(local,remote){
+  const map=new Map();
+  (local||[]).forEach(x=>map.set(x.id,x));
+  (remote||[]).forEach(x=>{
+    if(!map.has(x.id)){map.set(x.id,x);}
+    else{
+      /* For watchlist: prefer more-progressed status */
+      const L=map.get(x.id);
+      const rank={done:2,watching:1,planned:0};
+      const lr=rank[L.status]??-1,rr=rank[x.status]??-1;
+      if(rr>lr)map.set(x.id,{...L,...x});/* remote more progressed — take remote fields */
+    }
+  });
+  return Array.from(map.values());
+}
 function mergeDay(local,remote){return{goal:remote.goal||local.goal||{hours:6,label:''},sessions:mergeArrayById(local.sessions,remote.sessions),schedule:mergeArrayById(local.schedule,remote.schedule),activities:mergeArrayById(local.activities,remote.activities),watchlist:mergeArrayById(local.watchlist,remote.watchlist),habits:mergeArrayById(local.habits,remote.habits),mood:remote.mood||local.mood||'',moodEmoji:remote.moodEmoji||local.moodEmoji||'',journal:remote.journal||local.journal||'',rating:remote.rating||local.rating||0};}
 function mergeMeta(local,remote){const planMap=new Map();(local.plans||[]).forEach(p=>planMap.set(p.id,p));(remote.plans||[]).forEach(p=>{if(!planMap.has(p.id))planMap.set(p.id,p);});const courseSet=new Set([...(local.courses||[]),...(remote.courses||[])]);if(!courseSet.has('CSEB'))courseSet.add('CSEB');return{...remote,plans:Array.from(planMap.values()),courses:Array.from(courseSet),streak:Math.max(local.streak||0,remote.streak||0),autoCarryActivities:remote.autoCarryActivities||local.autoCarryActivities||false,autoCarryHabits:remote.autoCarryHabits||local.autoCarryHabits||false};}
 async function migrateLegacyData(uid){const LEGACY_STORE='dp6_day_',LEGACY_META='dp6_meta',legacyKeys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(LEGACY_STORE))legacyKeys.push(k);}const legacyMeta=localStorage.getItem(LEGACY_META);if(!legacyMeta&&!legacyKeys.length)return;setLoadingMsg('Migrating your data…');const newMetaKey='dp6_'+uid+'_meta',newStore='dp6_'+uid+'_day_';if(legacyMeta){try{const parsed=JSON.parse(legacyMeta);const existing=await window._fbLoadMeta(uid);if(existing.exists()){const merged=mergeMeta(parsed,existing.data());localStorage.setItem(newMetaKey,JSON.stringify(merged));await window._fbSaveMeta(uid,merged);}else{localStorage.setItem(newMetaKey,legacyMeta);await window._fbSaveMeta(uid,parsed);}localStorage.removeItem(LEGACY_META);}catch(e){}}for(const k of legacyKeys){const dateKey=k.replace(LEGACY_STORE,''),val=localStorage.getItem(k);if(!val)continue;try{const parsed=JSON.parse(val),newKey=newStore+dateKey;const existing=await window._fbLoadDay(uid,dateKey);if(existing.exists()){const merged=mergeDay(parsed,existing.data());localStorage.setItem(newKey,JSON.stringify(merged));await window._fbSaveDay(uid,dateKey,merged);}else{localStorage.setItem(newKey,val);await window._fbSaveDay(uid,dateKey,parsed);}localStorage.removeItem(k);}catch(e){}}}
@@ -1962,7 +1999,7 @@ function saveEdit(){if(!_eid||!_etype){closeEdit();return;}if(_etype==='session'
 _startSchedTick();
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){_startSchedTick();render(null);const newKey=todayKey();if(newKey!==currentKey&&_currentUser){try{localStorage.setItem(STORE+currentKey,JSON.stringify(data));}catch(e){}currentKey=newKey;_selectedPlanId=null;_invalidatePlanCache();_invalidateWatchCache();loadDay(currentKey);initDate();renderAll();renderPlanQuickPick();}}else{_stopSchedTick();}});
 
-async function initApp(user){_currentUser=user;document.getElementById('auth-loading').classList.remove('hidden');document.getElementById('main-app').style.display='none';setLoadingMsg('Setting up…');STORE='dp6_'+user.uid+'_day_';META_K='dp6_'+user.uid+'_meta';_dayKeysCache=null;currentKey=todayKey();_selectedPlanId=null;await migrateLegacyData(user.uid);await syncFromFirestore(user.uid);loadMeta();loadDay(currentKey);(function(){const lbl=(data.goal.label||'').trim().toLowerCase();if(lbl){const m=meta.plans.find(p=>p.name.toLowerCase()===lbl&&daysUntil(p.date)>=0);if(m){_selectedPlanId=m.id;return;}}const linked=data.sessions.filter(s=>s.planId).sort((a,b)=>(b.time||'').localeCompare(a.time||''));if(linked.length){const pid=linked[0].planId;if(meta.plans.find(p=>p.id===pid&&daysUntil(p.date)>=0))_selectedPlanId=pid;}})();applyTheme();initTimePickers();initDate();updateStreak();renderAll();renderPlanQuickPick();renderCourseSelect('plan-course','');renderCarryToggles();hideAuthScreen();}
+async function initApp(user){_currentUser=user;document.getElementById('auth-loading').classList.remove('hidden');document.getElementById('main-app').style.display='none';setLoadingMsg('Setting up…');STORE='dp6_'+user.uid+'_day_';META_K='dp6_'+user.uid+'_meta';_dayKeysCache=null;currentKey=todayKey();_selectedPlanId=null;await migrateLegacyData(user.uid);await syncFromFirestore(user.uid);invalidateDayKeysCache();_invalidatePlanCache();_invalidateWatchCache();loadMeta();loadDay(currentKey);(function(){const lbl=(data.goal.label||'').trim().toLowerCase();if(lbl){const m=meta.plans.find(p=>p.name.toLowerCase()===lbl&&daysUntil(p.date)>=0);if(m){_selectedPlanId=m.id;return;}}const linked=data.sessions.filter(s=>s.planId).sort((a,b)=>(b.time||'').localeCompare(a.time||''));if(linked.length){const pid=linked[0].planId;if(meta.plans.find(p=>p.id===pid&&daysUntil(p.date)>=0))_selectedPlanId=pid;}})();applyTheme();initTimePickers();initDate();updateStreak();renderAll();renderPlanQuickPick();renderCourseSelect('plan-course','');renderCarryToggles();hideAuthScreen();}
 
 function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user);}else{showAuthScreen();}});}
 if(window._fbReady){startAuthListener();}
