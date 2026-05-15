@@ -119,7 +119,7 @@ body.light .score-card{box-shadow:0 4px 24px rgba(0,0,0,0.07);}
 body.light .stat-card{box-shadow:0 2px 10px rgba(0,0,0,0.05);}
 
 html{height:100%;overscroll-behavior:none;}
-body{font-family:-apple-system,'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;transition:background .3s,color .3s;}
+body{font-family:-apple-system,'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;}
 ::-webkit-scrollbar{display:none;}*{scrollbar-width:none;}
 
 /* ── APP SHELL ── */
@@ -1106,8 +1106,8 @@ select option{background:var(--surf2);}
         <div id="act-sleep" style="display:none;">
           <div class="panel">
             <div class="panel-label">Log Sleep</div>
-            <div class="form-group"><label class="field-label">Sleep Time</label><input type="time" id="sleep-start" style="color-scheme:dark;" oninput="calcSleepDur()"></div>
-            <div class="form-group"><label class="field-label">Wake Up Time</label><input type="time" id="sleep-end" style="color-scheme:dark;" oninput="calcSleepDur()"></div>
+            <div class="form-group"><label class="field-label">Sleep Time</label><div class="tp-wrap" id="tp-sleep-start" onchange="calcSleepDur()"><select class="tp-h"><option value="">--</option></select><span class="tp-sep">:</span><select class="tp-m"><option value="">--</option></select><select class="tp-ap"><option>AM</option><option>PM</option></select></div></div>
+            <div class="form-group"><label class="field-label">Wake Up Time</label><div class="tp-wrap" id="tp-sleep-end" onchange="calcSleepDur()"><select class="tp-h"><option value="">--</option></select><span class="tp-sep">:</span><select class="tp-m"><option value="">--</option></select><select class="tp-ap"><option>AM</option><option>PM</option></select></div></div>
             <div class="form-group"><label class="field-label">Duration (auto-calculated)</label><input type="number" id="sleep-dur" min="0.5" max="24" step="0.25" placeholder="hours" readonly style="color:var(--amber);font-weight:700;"></div>
             <div class="form-group"><label class="field-label">Quality</label><select id="sleep-quality"><option value="good">😊 Good</option><option value="okay">😐 Okay</option><option value="poor">😴 Poor</option></select></div>
             <div class="form-group"><label class="field-label">Notes</label><input type="text" id="sleep-notes" placeholder="Dreams, interruptions…"></div>
@@ -1125,7 +1125,7 @@ select option{background:var(--surf2);}
             <div class="panel-label">Log Workout</div>
             <div class="form-group"><label class="field-label">Workout Type</label><select id="workout-type"><option value="gym">🏋️ Gym</option><option value="run">🏃 Run</option><option value="walk">🚶 Walk</option><option value="yoga">🧘 Yoga</option><option value="sport">⚽ Sport</option><option value="swim">🏊 Swim</option><option value="cycle">🚴 Cycle</option><option value="home">🏠 Home Workout</option><option value="other">Other</option></select></div>
             <div class="form-group"><label class="field-label">Duration (hours)</label><input type="number" id="workout-dur" min="0.25" max="12" step="0.25" placeholder="e.g. 1.5"></div>
-            <div class="form-group"><label class="field-label">Start Time</label><input type="time" id="workout-time" style="color-scheme:dark;"></div>
+            <div class="form-group"><label class="field-label">Start Time</label><div class="tp-wrap" id="tp-workout-time"><select class="tp-h"><option value="">--</option></select><span class="tp-sep">:</span><select class="tp-m"><option value="">--</option></select><select class="tp-ap"><option>AM</option><option>PM</option></select></div></div>
             <div class="form-group"><label class="field-label">Intensity</label><select id="workout-intensity"><option value="light">🟢 Light</option><option value="moderate" selected>🟡 Moderate</option><option value="intense">🔴 Intense</option></select></div>
             <div class="form-group"><label class="field-label">Notes</label><input type="text" id="workout-notes" placeholder="Exercises, reps, distance…"></div>
             <div class="form-group"><label class="field-label">📅 Date</label><input type="date" id="workout-date" style="color-scheme:dark;"></div>
@@ -1318,11 +1318,11 @@ select option{background:var(--surf2);}
 /* ── App Version ── */
 const APP_VERSION = '2.9.6';
 const CHANGELOG = [
-  'Lazy analytics & history render',
-  'Reduced blur for Safari speed',
-  'Sleep & Workout tracking tabs',
-  'Smaller active DOM — less memory',
-  'History detail rendered on demand'
+  'Fixed theme toggle freeze on rapid clicks',
+  'Sleep & Workout time pickers improved',
+  'Recently watched updates instantly',
+  'History detail renders on demand only',
+  'Blur reduced for Safari performance'
 ];
 
 /* ── Service Worker Registration & Update Detection ── */
@@ -1440,7 +1440,13 @@ function dismissPwaBanner(){document.getElementById('pwa-banner').classList.remo
 window.addEventListener('appinstalled',()=>document.getElementById('pwa-banner').classList.remove('show'));
 
 let _isLight=false;
-function toggleTheme(){_isLight=!_isLight;applyTheme();localStorage.setItem('dp-theme',_isLight?'light':'dark');}
+function toggleTheme(){
+  _isLight=!_isLight;
+  document.body.style.transition='none';
+  applyTheme();
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{document.body.style.transition='';}));
+  localStorage.setItem('dp-theme',_isLight?'light':'dark');
+}
 function applyTheme(){
   document.body.classList.toggle('light',_isLight);
   document.getElementById('theme-toggle').textContent=_isLight?'🌙':'☀️';
@@ -1634,20 +1640,15 @@ function isOverlap(start,end,excludeId){const newEnd=end||start;return data.sche
 function addSchedule(){const title=document.getElementById('sch-title').value.trim(),start=getTime('tp-sch-start'),end=getTime('tp-sch-end'),dateVal=document.getElementById('sch-date').value||'';if(!title){alert('⚠️ Enter a title for the block.');return;}if(!start){alert('⚠️ Select a start time.');return;}if(end&&end<=start){alert('⚠️ End time must be after start time.');return;}const targetKey=dateVal||currentKey,isFuture=dateVal&&dateVal!==currentKey;if(!isFuture&&isOverlap(start,end,null)){alert('⚠️ Time overlaps an existing block.');return;}const entry={id:uid(),start,end,type:document.getElementById('sch-type').value,title,desc:document.getElementById('sch-desc').value.trim()};if(isFuture){const d=getOrCreateDayData(targetKey);d.schedule=d.schedule||[];d.schedule.push(entry);d.schedule.sort((a,b)=>a.start.localeCompare(b.start));saveDayToKey(targetKey,d);alert('✓ Block saved for '+fmtKey(targetKey));}else{data.schedule.push(entry);data.schedule.sort((a,b)=>a.start.localeCompare(b.start));saveDay(['schedule','overview']);}document.getElementById('sch-title').value='';document.getElementById('sch-desc').value='';document.getElementById('sch-date').value='';resetTP('tp-sch-start');resetTP('tp-sch-end');}
 /* ── Sleep & Workout helpers ── */
 function calcSleepDur(){
-  const s=document.getElementById('sleep-start').value;
-  const e=document.getElementById('sleep-end').value;
+  const s=getTime('tp-sleep-start'),e=getTime('tp-sleep-end');
   if(!s||!e)return;
   let sm=timeToMin(s),em=timeToMin(e);
-  if(em<=sm)em+=1440;/* past midnight */
-  const h=Math.round((em-sm)/60*4)/4;
-  document.getElementById('sleep-dur').value=h>0?h:'';
+  if(em<=sm)em+=1440;
+  document.getElementById('sleep-dur').value=Math.round((em-sm)/60*4)/4||'';
 }
 function timeToMin(t){const[h,m]=t.split(':');return +h*60+ +m;}
-function minToFmt(m){const h=Math.floor(m/60)%24,mn=m%60;return (h%12||12)+':'+(mn<10?'0'+mn:mn)+(h>=12?' PM':' AM');}
-
 function addSleep(){
-  const start=document.getElementById('sleep-start').value;
-  const end=document.getElementById('sleep-end').value;
+  const start=getTime('tp-sleep-start'),end=getTime('tp-sleep-end');
   const dur=parseFloat(document.getElementById('sleep-dur').value)||0;
   if(!start||!end){alert('⚠️ Enter sleep and wake time.');return;}
   const dateVal=document.getElementById('sleep-date').value||'';
@@ -1658,8 +1659,7 @@ function addSleep(){
   const targetKey=dateVal||currentKey,isFuture=dateVal&&dateVal!==currentKey;
   if(isFuture){const d=getOrCreateDayData(targetKey);d.activities.push(entry);saveDayToKey(targetKey,d);alert('✓ Saved for '+fmtKey(targetKey));}
   else{data.activities.push(entry);saveDay(['activities','overview']);}
-  document.getElementById('sleep-start').value='';
-  document.getElementById('sleep-end').value='';
+  resetTP('tp-sleep-start');resetTP('tp-sleep-end');
   document.getElementById('sleep-dur').value='';
   document.getElementById('sleep-notes').value='';
   document.getElementById('sleep-date').value='';
@@ -1673,14 +1673,14 @@ function addWorkout(){
   const typeLabel={gym:'🏋️ Gym',run:'🏃 Run',walk:'🚶 Walk',yoga:'🧘 Yoga',sport:'⚽ Sport',swim:'🏊 Swim',cycle:'🚴 Cycle',home:'🏠 Home',other:'Other'}[wtype]||wtype;
   const entry={id:uid(),category:'workout',workoutType:wtype,workoutLabel:typeLabel,duration:dur,
     intensity:document.getElementById('workout-intensity').value,
-    time:document.getElementById('workout-time').value||'',
+    time:getTime('tp-workout-time')||'',
     notes:document.getElementById('workout-notes').value.trim(),
     name:typeLabel+' Workout',priority:'med',done:true};
   const targetKey=dateVal||currentKey,isFuture=dateVal&&dateVal!==currentKey;
   if(isFuture){const d=getOrCreateDayData(targetKey);d.activities.push(entry);saveDayToKey(targetKey,d);alert('✓ Saved for '+fmtKey(targetKey));}
   else{data.activities.push(entry);saveDay(['activities','overview']);}
+  resetTP('tp-workout-time');
   document.getElementById('workout-dur').value='';
-  document.getElementById('workout-time').value='';
   document.getElementById('workout-notes').value='';
   document.getElementById('workout-date').value='';
   renderWorkoutList();
@@ -1729,9 +1729,17 @@ function deleteItemFromDay(arr,id,rerenderSecs){const result=getItemFromAnyDay(a
 const _sectionMap={sessions:['sessions','overview','score'],schedule:['schedule','overview'],activities:['activities','overview','score'],watchlist:['watch','overview']};
 function findItemDay(arr,id){if(data[arr]&&data[arr].find(x=>x.id===id))return currentKey;const keys=getAllDayKeys();for(const k of keys){if(k===currentKey)continue;const d=getDayData(k);if(d&&d[arr]&&d[arr].find(x=>x.id===id))return k;}return null;}
 function mutateItemDay(arr,id,mutateFn,rerenderSecs){const dayKey=findItemDay(arr,id);if(!dayKey)return;if(dayKey===currentKey){mutateFn(data[arr]);saveDay(rerenderSecs);}else{const d=getDayData(dayKey);if(!d||!d[arr])return;mutateFn(d[arr]);saveDayToKey(dayKey,d);render(rerenderSecs);const histEl=document.getElementById('more-history');if(histEl&&histEl.style.display!=='none')renderHistory();}}
-function removeItem(arr,id){deleteItemFromDay(arr,id,_sectionMap[arr]||null);if(arr==='watchlist')_invalidateWatchCache();}
+function removeItem(arr,id){
+  deleteItemFromDay(arr,id,_sectionMap[arr]||null);
+  if(arr==='watchlist'){_invalidateWatchCache();if(_subActive('more-weekly'))renderWatchAnalytics();}
+}
 function toggleDone(id){mutateItemDay('activities',id,a=>{const x=a.find(i=>i.id===id);if(x)x.done=!x.done;},['activities','overview','score']);}
-function changeWatchStatus(id,val){mutateItemDay('watchlist',id,a=>{const x=a.find(i=>i.id===id);if(x)x.status=val;},['watch']);_invalidateWatchCache();}
+function changeWatchStatus(id,val){
+  mutateItemDay('watchlist',id,a=>{const x=a.find(i=>i.id===id);if(x)x.status=val;},['watch']);
+  _invalidateWatchCache();
+  const waDiv=document.getElementById('watch-analytics-dash');
+  if(waDiv&&_subActive('more-weekly'))renderWatchAnalytics();
+}
 
 function renderSessions(){const hrs=sumHours(data.sessions),pct=Math.min(100,(hrs/data.goal.hours)*100).toFixed(0);document.getElementById('study-prog-txt').textContent=hrs+'h / '+data.goal.hours+'h';document.getElementById('study-prog-bar').style.width=pct+'%';const gEl=document.getElementById('study-goal'),lEl=document.getElementById('goal-label');if(document.activeElement!==gEl)gEl.value=data.goal.hours;if(document.activeElement!==lEl)lEl.value=data.goal.label;const el=document.getElementById('session-list');if(!data.sessions.length){el.innerHTML=emptyHTML('📖','No sessions yet');return;}el.innerHTML=data.sessions.map(s=>{const plan=s.planId?meta.plans.find(p=>p.id===s.planId):null;return `<div class="list-item"><div class="item-bar bar-amber"></div><div class="item-time">${s.time?fmt(s.time):'—'}</div><div class="item-info"><div class="item-title">${esc(s.subject)}</div><div class="item-sub">${s.duration}h${plan?` · <span style="color:var(--amber)">📋 ${esc(plan.name)}</span>`:''}${s.notes?' · '+esc(s.notes):''}</div></div><button class="btn-edit" onclick="editSession('${s.id}')">✏️</button><button class="btn-del" style="margin-left:4px;" onclick="removeItem('sessions','${s.id}')">✕</button></div>`;}).join('');}
 function isSchedPast(s){if(s.done)return true;const ref=s.end||s.start;if(!ref)return false;const now=new Date(),parts=ref.split(':');const blockEnd=new Date(now.getFullYear(),now.getMonth(),now.getDate(),+parts[0],+parts[1],0);return blockEnd<now;}
