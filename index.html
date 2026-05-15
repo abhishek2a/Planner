@@ -212,7 +212,7 @@ body{font-family:-apple-system,'DM Sans',sans-serif;background:var(--bg);color:v
   padding-top:calc(var(--sat) + 12px);padding-bottom:12px;
   padding-left:calc(var(--sal) + 20px);padding-right:calc(var(--sar) + 16px);
   display:flex;align-items:center;justify-content:space-between;
-  z-index:50;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  z-index:50;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
   transform:translateZ(0);
 }
 .header-title{font-family:'Playfair Display',serif;font-size:1.55rem;font-weight:700;letter-spacing:-0.03em;line-height:1;}
@@ -242,7 +242,7 @@ body{font-family:-apple-system,'DM Sans',sans-serif;background:var(--bg);color:v
   border-top:1px solid var(--glass-bdr);
   padding-bottom:var(--sab);
   display:flex;align-items:stretch;z-index:50;
-  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transform:translateZ(0);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transform:translateZ(0);
 }
 .nav-btn{
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -957,7 +957,7 @@ select option{background:var(--surf2);}
       <div class="section" id="sec-studyplan">
         <div class="subnav">
           <button class="subnav-btn active" onclick="switchSubnav(this,'sp-study')">📚 Study Log</button>
-          <button class="subnav-btn" onclick="switchSubnav(this,'sp-plans');renderPlans();">📋 Plans</button>
+          <button class="subnav-btn" onclick="switchSubnav(this,'sp-plans');setTimeout(()=>renderPlans(),0);">📋 Plans</button>
           <button class="subnav-btn" onclick="switchSubnav(this,'sp-sched')">🕐 Schedule</button>
         </div>
         <div id="sp-study">
@@ -1080,27 +1080,67 @@ select option{background:var(--surf2);}
 
       <!-- ─── ACTIVITY ─── -->
       <div class="section" id="sec-activity">
-        <div class="sec-title">Activity</div>
-        <div class="panel">
-          <div class="panel-label">Add Activity</div>
-          <div class="form-group"><label class="field-label">Activity Name</label><input type="text" id="act-name" placeholder="e.g. Morning walk"></div>
-          <div class="form-group"><label class="field-label">Category</label><select id="act-category"><option value="general">General</option><option value="sleep">😴 Sleep</option><option value="workout">💪 Workout</option></select></div>
-          <div class="form-group"><label class="field-label">Priority</label><select id="act-priority"><option value="high">High</option><option value="med" selected>Medium</option><option value="low">Low</option></select></div>
-          <div class="form-group"><label class="field-label">Time (optional)</label><div class="tp-wrap" id="tp-act"><select class="tp-h"><option value="">--</option></select><span class="tp-sep">:</span><select class="tp-m"><option value="">--</option></select><select class="tp-ap"><option>AM</option><option>PM</option></select></div></div>
-          <div class="form-group" id="act-dur-wrap"><label class="field-label">Duration (hours) <span style="color:var(--text3);font-weight:400;">(optional)</span></label><input type="number" id="act-duration" min="0.25" max="24" step="0.25" placeholder="e.g. 1.5"></div>
-          <div class="form-group"><label class="field-label">Notes</label><input type="text" id="act-notes" placeholder="Details, reminders…"></div>
-          <div class="form-group"><label class="field-label">📅 Date <span style="color:var(--text3);font-weight:400;">(leave blank for today)</span></label><input type="date" id="act-date" style="color-scheme:dark;"></div>
-          <div class="btn-row"><button class="btn btn-primary btn-full" onclick="addActivity()">+ Add Activity</button></div>
+        <div class="subnav">
+          <button class="subnav-btn active" onclick="switchSubnav(this,'act-general')">✏️ Activities</button>
+          <button class="subnav-btn" onclick="switchSubnav(this,'act-sleep')">😴 Sleep</button>
+          <button class="subnav-btn" onclick="switchSubnav(this,'act-workout')">💪 Workout</button>
         </div>
-        <div class="section-lbl" id="act-today-lbl">Today's Activities</div>
-        <div class="ov-card" style="margin-bottom:8px;"><div id="activity-list"></div></div>
-        <div class="stats-grid" id="act-stats-grid" style="display:none;"></div>
+
+        <!-- Activities tab -->
+        <div id="act-general">
+          <div class="panel">
+            <div class="panel-label">Add Activity</div>
+            <div class="form-group"><label class="field-label">Activity Name</label><input type="text" id="act-name" placeholder="e.g. Morning walk"></div>
+            <div class="form-group"><label class="field-label">Priority</label><select id="act-priority"><option value="high">High</option><option value="med" selected>Medium</option><option value="low">Low</option></select></div>
+            <div class="form-group"><label class="field-label">Time (optional)</label><div class="tp-wrap" id="tp-act"><select class="tp-h"><option value="">--</option></select><span class="tp-sep">:</span><select class="tp-m"><option value="">--</option></select><select class="tp-ap"><option>AM</option><option>PM</option></select></div></div>
+            <div class="form-group"><label class="field-label">Notes</label><input type="text" id="act-notes" placeholder="Details, reminders…"></div>
+            <div class="form-group"><label class="field-label">📅 Date</label><input type="date" id="act-date" style="color-scheme:dark;"></div>
+            <div class="btn-row"><button class="btn btn-primary btn-full" onclick="addActivity()">+ Add Activity</button></div>
+          </div>
+          <div class="section-lbl">Today's Activities</div>
+          <div class="ov-card" style="margin-bottom:8px;"><div id="activity-list"></div></div>
+          <div class="stats-grid" id="act-stats-grid" style="display:none;"></div>
+        </div>
+
+        <!-- Sleep tab -->
+        <div id="act-sleep" style="display:none;">
+          <div class="panel">
+            <div class="panel-label">Log Sleep</div>
+            <div class="form-group"><label class="field-label">Sleep Time</label><input type="time" id="sleep-start" style="color-scheme:dark;" oninput="calcSleepDur()"></div>
+            <div class="form-group"><label class="field-label">Wake Up Time</label><input type="time" id="sleep-end" style="color-scheme:dark;" oninput="calcSleepDur()"></div>
+            <div class="form-group"><label class="field-label">Duration (auto-calculated)</label><input type="number" id="sleep-dur" min="0.5" max="24" step="0.25" placeholder="hours" readonly style="color:var(--amber);font-weight:700;"></div>
+            <div class="form-group"><label class="field-label">Quality</label><select id="sleep-quality"><option value="good">😊 Good</option><option value="okay">😐 Okay</option><option value="poor">😴 Poor</option></select></div>
+            <div class="form-group"><label class="field-label">Notes</label><input type="text" id="sleep-notes" placeholder="Dreams, interruptions…"></div>
+            <div class="form-group"><label class="field-label">📅 Date</label><input type="date" id="sleep-date" style="color-scheme:dark;"></div>
+            <div class="btn-row"><button class="btn btn-primary btn-full" onclick="addSleep()">+ Log Sleep</button></div>
+          </div>
+          <div class="section-lbl">Sleep Records</div>
+          <div class="ov-card" style="margin-bottom:8px;"><div id="sleep-list"></div></div>
+          <div class="stats-grid" id="sleep-stats-grid" style="display:none;margin-bottom:10px;"></div>
+        </div>
+
+        <!-- Workout tab -->
+        <div id="act-workout" style="display:none;">
+          <div class="panel">
+            <div class="panel-label">Log Workout</div>
+            <div class="form-group"><label class="field-label">Workout Type</label><select id="workout-type"><option value="gym">🏋️ Gym</option><option value="run">🏃 Run</option><option value="walk">🚶 Walk</option><option value="yoga">🧘 Yoga</option><option value="sport">⚽ Sport</option><option value="swim">🏊 Swim</option><option value="cycle">🚴 Cycle</option><option value="home">🏠 Home Workout</option><option value="other">Other</option></select></div>
+            <div class="form-group"><label class="field-label">Duration (hours)</label><input type="number" id="workout-dur" min="0.25" max="12" step="0.25" placeholder="e.g. 1.5"></div>
+            <div class="form-group"><label class="field-label">Start Time</label><input type="time" id="workout-time" style="color-scheme:dark;"></div>
+            <div class="form-group"><label class="field-label">Intensity</label><select id="workout-intensity"><option value="light">🟢 Light</option><option value="moderate" selected>🟡 Moderate</option><option value="intense">🔴 Intense</option></select></div>
+            <div class="form-group"><label class="field-label">Notes</label><input type="text" id="workout-notes" placeholder="Exercises, reps, distance…"></div>
+            <div class="form-group"><label class="field-label">📅 Date</label><input type="date" id="workout-date" style="color-scheme:dark;"></div>
+            <div class="btn-row"><button class="btn btn-primary btn-full" onclick="addWorkout()">+ Log Workout</button></div>
+          </div>
+          <div class="section-lbl">Workout Records</div>
+          <div class="ov-card" style="margin-bottom:8px;"><div id="workout-list"></div></div>
+          <div class="stats-grid" id="workout-stats-grid" style="display:none;margin-bottom:10px;"></div>
+        </div>
       </div>
       <div class="section" id="sec-more">
         <div class="subnav">
           <button class="subnav-btn active" onclick="switchSubnav(this,'more-watch');renderWatch();">▶ Watch</button>
-          <button class="subnav-btn" onclick="switchSubnav(this,'more-weekly');renderWeekly();renderWatchAnalytics();">📊 Analytics</button>
-          <button class="subnav-btn" onclick="switchSubnav(this,'more-history');renderHistory(true);">🗂 History</button>
+          <button class="subnav-btn" onclick="switchSubnav(this,'more-weekly');setTimeout(()=>{renderWeekly();renderWatchAnalytics();},0);">📊 Analytics</button>
+          <button class="subnav-btn" onclick="switchSubnav(this,'more-history');setTimeout(()=>renderHistory(true),0);">🗂 History</button>
           <button class="subnav-btn" onclick="switchSubnav(this,'more-settings');renderSettings();">⚙️ Data</button>
         </div>
         <div id="more-watch">
@@ -1276,13 +1316,13 @@ select option{background:var(--surf2);}
 })();
 
 /* ── App Version ── */
-const APP_VERSION = '2.9.5A';
+const APP_VERSION = '2.9.6';
 const CHANGELOG = [
-  'Major performance & stability pass',
-  'Faster tab switching & analytics',
-  'Chunked history render (no freeze)',
-  'Reduced Safari backdrop-filter cost',
-  'Smarter sync — less writes/polling'
+  'Lazy analytics & history render',
+  'Reduced blur for Safari speed',
+  'Sleep & Workout tracking tabs',
+  'Smaller active DOM — less memory',
+  'History detail rendered on demand'
 ];
 
 /* ── Service Worker Registration & Update Detection ── */
@@ -1505,7 +1545,7 @@ function render(secs){
   /* Section-specific renders — only when that section/subsection visible */
   if(has('sessions')&&studyActive&&_subActive('sp-study'))renderSessions();
   if(has('schedule')){if(studyActive&&_subActive('sp-sched'))renderSchedule();}
-  if(has('activities')&&actActive)renderActivities();
+  if(has('activities')&&actActive){renderActivities();renderSleepList();renderWorkoutList();}
   if(has('watch'))renderWatch();
   /* Overview and score: always run when requested (feeds home AND overviews used by other code) */
   if(has('overview')||has('plans'))renderOverview();
@@ -1571,7 +1611,7 @@ function switchTab(id,btn){
   document.getElementById('scroll-area').scrollTop=0;
   /* Re-render active section data on every tab switch */
   if(id==='home')render(null);
-  if(id==='activity')renderActivities();
+  if(id==='activity'){renderActivities();renderSleepList();renderWorkoutList();}
   if(id==='studyplan'){renderStudyStatBar();if(_subActive('sp-study'))renderSessions();}
 }
 function switchSubnav(btn,showId){const subnav=btn.closest('.subnav');subnav.querySelectorAll('.subnav-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');subnav.parentElement.querySelectorAll(':scope > div:not(.subnav)').forEach(d=>d.style.display='none');document.getElementById(showId).style.display='';}
@@ -1592,8 +1632,96 @@ function renderScore(){const{score,studyPct,taskPct,ratingPct}=calcScore();const
 function addSession(){const sub=document.getElementById('sess-subject').value.trim(),durRaw=document.getElementById('sess-dur').value,dur=parseFloat(durRaw);if(!sub){alert('⚠️ Enter a subject name.');return;}if(!durRaw||isNaN(dur)||dur<=0){alert('⚠️ Enter a valid duration (e.g. 1.5).');return;}if(dur>24){alert('⚠️ Duration cannot exceed 24 hours.');return;}const planId=_selectedPlanId||null;data.sessions.push({id:uid(),subject:sub,duration:dur,time:getTime('tp-sess'),planId,notes:document.getElementById('sess-notes').value.trim()});data.sessions.sort((a,b)=>{if(!a.time&&!b.time)return 0;if(!a.time)return 1;if(!b.time)return-1;return a.time.localeCompare(b.time);});document.getElementById('sess-subject').value='';document.getElementById('sess-dur').value='';document.getElementById('sess-notes').value='';resetTP('tp-sess');saveDay(['sessions','overview','score']);renderPlanQuickPick();if(document.getElementById('sp-plans')&&document.getElementById('sp-plans').style.display!=='none')renderPlans();}
 function isOverlap(start,end,excludeId){const newEnd=end||start;return data.schedule.some(s=>{if(excludeId&&s.id===excludeId)return false;const sEnd=s.end||s.start;return!(newEnd<=s.start||start>=sEnd);});}
 function addSchedule(){const title=document.getElementById('sch-title').value.trim(),start=getTime('tp-sch-start'),end=getTime('tp-sch-end'),dateVal=document.getElementById('sch-date').value||'';if(!title){alert('⚠️ Enter a title for the block.');return;}if(!start){alert('⚠️ Select a start time.');return;}if(end&&end<=start){alert('⚠️ End time must be after start time.');return;}const targetKey=dateVal||currentKey,isFuture=dateVal&&dateVal!==currentKey;if(!isFuture&&isOverlap(start,end,null)){alert('⚠️ Time overlaps an existing block.');return;}const entry={id:uid(),start,end,type:document.getElementById('sch-type').value,title,desc:document.getElementById('sch-desc').value.trim()};if(isFuture){const d=getOrCreateDayData(targetKey);d.schedule=d.schedule||[];d.schedule.push(entry);d.schedule.sort((a,b)=>a.start.localeCompare(b.start));saveDayToKey(targetKey,d);alert('✓ Block saved for '+fmtKey(targetKey));}else{data.schedule.push(entry);data.schedule.sort((a,b)=>a.start.localeCompare(b.start));saveDay(['schedule','overview']);}document.getElementById('sch-title').value='';document.getElementById('sch-desc').value='';document.getElementById('sch-date').value='';resetTP('tp-sch-start');resetTP('tp-sch-end');}
-function addActivity(){const name=document.getElementById('act-name').value.trim(),dateVal=document.getElementById('act-date').value||'';if(!name){alert('⚠️ Enter an activity name.');return;}const cat=document.getElementById('act-category').value||'general';const dur=parseFloat(document.getElementById('act-duration').value)||0;const entry={id:uid(),name,category:cat,duration:dur||undefined,time:getTime('tp-act'),priority:document.getElementById('act-priority').value,notes:document.getElementById('act-notes').value.trim(),done:false};const targetKey=dateVal||currentKey,isFuture=dateVal&&dateVal!==currentKey;if(isFuture){const d=getOrCreateDayData(targetKey);d.activities=d.activities||[];d.activities.push(entry);saveDayToKey(targetKey,d);alert('✓ Activity saved for '+fmtKey(targetKey));}else{data.activities.push(entry);saveDay(['activities','overview','score']);}document.getElementById('act-name').value='';document.getElementById('act-notes').value='';document.getElementById('act-date').value='';document.getElementById('act-duration').value='';document.getElementById('act-category').value='general';resetTP('tp-act');}
-function addWatch(){const title=document.getElementById('watch-title').value.trim(),dateVal=document.getElementById('watch-date').value||'';if(!title){alert('⚠️ Enter a title.');return;}const entry={id:uid(),title,platform:document.getElementById('watch-platform').value,status:document.getElementById('watch-status').value,notes:document.getElementById('watch-notes').value.trim()};const targetKey=dateVal||currentKey,isFuture=dateVal&&dateVal!==currentKey;if(isFuture){const d=getOrCreateDayData(targetKey);d.watchlist=d.watchlist||[];d.watchlist.push(entry);saveDayToKey(targetKey,d);alert('✓ Watch entry saved for '+fmtKey(targetKey));}else{data.watchlist.push(entry);saveDay(['watch','overview']);}document.getElementById('watch-title').value='';document.getElementById('watch-notes').value='';document.getElementById('watch-date').value='';}
+/* ── Sleep & Workout helpers ── */
+function calcSleepDur(){
+  const s=document.getElementById('sleep-start').value;
+  const e=document.getElementById('sleep-end').value;
+  if(!s||!e)return;
+  let sm=timeToMin(s),em=timeToMin(e);
+  if(em<=sm)em+=1440;/* past midnight */
+  const h=Math.round((em-sm)/60*4)/4;
+  document.getElementById('sleep-dur').value=h>0?h:'';
+}
+function timeToMin(t){const[h,m]=t.split(':');return +h*60+ +m;}
+function minToFmt(m){const h=Math.floor(m/60)%24,mn=m%60;return (h%12||12)+':'+(mn<10?'0'+mn:mn)+(h>=12?' PM':' AM');}
+
+function addSleep(){
+  const start=document.getElementById('sleep-start').value;
+  const end=document.getElementById('sleep-end').value;
+  const dur=parseFloat(document.getElementById('sleep-dur').value)||0;
+  if(!start||!end){alert('⚠️ Enter sleep and wake time.');return;}
+  const dateVal=document.getElementById('sleep-date').value||'';
+  const entry={id:uid(),category:'sleep',sleepTime:start,wakeTime:end,duration:dur,
+    quality:document.getElementById('sleep-quality').value,
+    notes:document.getElementById('sleep-notes').value.trim(),
+    name:'Sleep',priority:'med',done:true,time:start};
+  const targetKey=dateVal||currentKey,isFuture=dateVal&&dateVal!==currentKey;
+  if(isFuture){const d=getOrCreateDayData(targetKey);d.activities.push(entry);saveDayToKey(targetKey,d);alert('✓ Saved for '+fmtKey(targetKey));}
+  else{data.activities.push(entry);saveDay(['activities','overview']);}
+  document.getElementById('sleep-start').value='';
+  document.getElementById('sleep-end').value='';
+  document.getElementById('sleep-dur').value='';
+  document.getElementById('sleep-notes').value='';
+  document.getElementById('sleep-date').value='';
+  renderSleepList();
+}
+function addWorkout(){
+  const dur=parseFloat(document.getElementById('workout-dur').value)||0;
+  if(!dur){alert('⚠️ Enter duration.');return;}
+  const dateVal=document.getElementById('workout-date').value||'';
+  const wtype=document.getElementById('workout-type').value;
+  const typeLabel={gym:'🏋️ Gym',run:'🏃 Run',walk:'🚶 Walk',yoga:'🧘 Yoga',sport:'⚽ Sport',swim:'🏊 Swim',cycle:'🚴 Cycle',home:'🏠 Home',other:'Other'}[wtype]||wtype;
+  const entry={id:uid(),category:'workout',workoutType:wtype,workoutLabel:typeLabel,duration:dur,
+    intensity:document.getElementById('workout-intensity').value,
+    time:document.getElementById('workout-time').value||'',
+    notes:document.getElementById('workout-notes').value.trim(),
+    name:typeLabel+' Workout',priority:'med',done:true};
+  const targetKey=dateVal||currentKey,isFuture=dateVal&&dateVal!==currentKey;
+  if(isFuture){const d=getOrCreateDayData(targetKey);d.activities.push(entry);saveDayToKey(targetKey,d);alert('✓ Saved for '+fmtKey(targetKey));}
+  else{data.activities.push(entry);saveDay(['activities','overview']);}
+  document.getElementById('workout-dur').value='';
+  document.getElementById('workout-time').value='';
+  document.getElementById('workout-notes').value='';
+  document.getElementById('workout-date').value='';
+  renderWorkoutList();
+}
+function renderSleepList(){
+  const sleepActs=data.activities.filter(a=>a.category==='sleep');
+  const el=document.getElementById('sleep-list');
+  const statsEl=document.getElementById('sleep-stats-grid');
+  if(!el)return;
+  if(!sleepActs.length){el.innerHTML=emptyHTML('😴','No sleep logged today');statsEl&&(statsEl.style.display='none');return;}
+  const totalH=sleepActs.reduce((s,a)=>s+(a.duration||0),0);
+  el.innerHTML=sleepActs.map(a=>{
+    const qIcon={good:'😊',okay:'😐',poor:'😴'}[a.quality||'good']||'😴';
+    return `<div class="list-item"><div class="item-bar bar-indigo"></div><div class="item-time">${a.sleepTime?minToFmt(timeToMin(a.sleepTime)):'—'}</div><div class="item-info"><div class="item-title">${qIcon} ${a.duration||'?'}h sleep</div><div class="item-sub">Wake: ${a.wakeTime?minToFmt(timeToMin(a.wakeTime)):'—'}${a.notes?' · '+esc(a.notes):''}</div></div><button class="btn-del" onclick="removeItem('activities','${a.id}');renderSleepList()">✕</button></div>`;
+  }).join('');
+  /* 7-day stats */
+  const ws=_getWeekActStats();
+  if(statsEl&&ws.sD>0){
+    statsEl.style.display='grid';
+    const avg=ws.sD?(ws.sH/ws.sD).toFixed(1):0;
+    statsEl.innerHTML=`<div class="stat-card sc-indigo"><div class="stat-val" style="font-size:1.3rem;">${totalH.toFixed(1)}h</div><div class="stat-lbl">Today</div></div><div class="stat-card sc-indigo"><div class="stat-val" style="font-size:1.3rem;">${ws.sH.toFixed(1)}h</div><div class="stat-lbl">This Week</div></div><div class="stat-card sc-indigo"><div class="stat-val" style="font-size:1.3rem;">${avg}h</div><div class="stat-lbl">Daily Avg</div></div><div class="stat-card sc-indigo"><div class="stat-val" style="font-size:1.3rem;">${ws.sD}d</div><div class="stat-lbl">Days Logged</div></div>`;
+  }
+}
+function renderWorkoutList(){
+  const workActs=data.activities.filter(a=>a.category==='workout');
+  const el=document.getElementById('workout-list');
+  const statsEl=document.getElementById('workout-stats-grid');
+  if(!el)return;
+  if(!workActs.length){el.innerHTML=emptyHTML('💪','No workouts logged today');statsEl&&(statsEl.style.display='none');return;}
+  const intIcon={light:'🟢',moderate:'🟡',intense:'🔴'};
+  el.innerHTML=workActs.map(a=>`<div class="list-item"><div class="item-bar bar-teal"></div>${a.time?`<div class="item-time">${fmt(a.time)}</div>`:''}<div class="item-info"><div class="item-title">${a.workoutLabel||'💪 Workout'} ${intIcon[a.intensity||'moderate']||''}</div><div class="item-sub">${a.duration}h${a.notes?' · '+esc(a.notes):''}</div></div><button class="btn-del" onclick="removeItem('activities','${a.id}');renderWorkoutList()">✕</button></div>`).join('');
+  const ws=_getWeekActStats();
+  if(statsEl&&ws.wD>0){
+    statsEl.style.display='grid';
+    const avg=ws.wD?(ws.wH/ws.wD).toFixed(1):0;
+    const todayH=workActs.reduce((s,a)=>s+(a.duration||0),0);
+    statsEl.innerHTML=`<div class="stat-card sc-teal"><div class="stat-val" style="font-size:1.3rem;">${todayH.toFixed(1)}h</div><div class="stat-lbl">Today</div></div><div class="stat-card sc-teal"><div class="stat-val" style="font-size:1.3rem;">${ws.wH.toFixed(1)}h</div><div class="stat-lbl">This Week</div></div><div class="stat-card sc-teal"><div class="stat-val" style="font-size:1.3rem;">${avg}h</div><div class="stat-lbl">Per Session</div></div><div class="stat-card sc-teal"><div class="stat-val" style="font-size:1.3rem;">${ws.wD}d</div><div class="stat-lbl">Days Active</div></div>`;
+  }
+}
+function addActivity(){const name=document.getElementById('act-name').value.trim(),dateVal=document.getElementById('act-date').value||'';if(!name){alert('⚠️ Enter an activity name.');return;}const entry={id:uid(),name,category:'general',time:getTime('tp-act'),priority:document.getElementById('act-priority').value,notes:document.getElementById('act-notes').value.trim(),done:false};const targetKey=dateVal||currentKey,isFuture=dateVal&&dateVal!==currentKey;if(isFuture){const d=getOrCreateDayData(targetKey);d.activities=d.activities||[];d.activities.push(entry);saveDayToKey(targetKey,d);alert('✓ Saved for '+fmtKey(targetKey));}else{data.activities.push(entry);saveDay(['activities','overview','score']);}document.getElementById('act-name').value='';document.getElementById('act-notes').value='';document.getElementById('act-date').value='';resetTP('tp-act');}
+function addWatch(){const title=document.getElementById('watch-title').value.trim(),dateVal=document.getElementById('watch-date').value||'';if(!title){alert('⚠️ Enter a title.');return;}const entry={id:uid(),title,platform:document.getElementById('watch-platform').value,status:document.getElementById('watch-status').value,notes:document.getElementById('watch-notes').value.trim()};const targetKey=dateVal||currentKey,isFuture=dateVal&&dateVal!==currentKey;if(isFuture){const d=getOrCreateDayData(targetKey);d.watchlist=d.watchlist||[];d.watchlist.push(entry);saveDayToKey(targetKey,d);alert('✓ Saved for '+fmtKey(targetKey));}else{data.watchlist.push(entry);saveDay(['watch','overview']);}_invalidateWatchCache();/* refresh analytics if open */const wa=document.getElementById('watch-analytics-dash');if(wa&&wa.closest('#more-weekly')&&document.getElementById('more-weekly').style.display!=='none')renderWatchAnalytics();document.getElementById('watch-title').value='';document.getElementById('watch-notes').value='';document.getElementById('watch-date').value='';}
 
 function getItemFromAnyDay(arr,id){if(data[arr]){const item=data[arr].find(x=>x.id===id);if(item)return{item:JSON.parse(JSON.stringify(item)),dayKey:currentKey};}const keys=getAllDayKeys();for(const k of keys){if(k===currentKey)continue;const d=getDayData(k);if(d&&d[arr]){const item=d[arr].find(x=>x.id===id);if(item)return{item:JSON.parse(JSON.stringify(item)),dayKey:k};}}return null;}
 function saveItemToDay(arr,id,updatedItem,rerenderSecs){const result=getItemFromAnyDay(arr,id);if(!result)return;const{dayKey}=result;if(dayKey===currentKey){const idx=data[arr].findIndex(x=>x.id===id);if(idx>-1)data[arr][idx]=updatedItem;if(arr==='sessions')data.sessions.sort((a,b)=>{if(!a.time&&!b.time)return 0;if(!a.time)return 1;if(!b.time)return-1;return a.time.localeCompare(b.time);});if(arr==='schedule')data.schedule.sort((a,b)=>a.start.localeCompare(b.start));saveDay(rerenderSecs);}else{const d=getDayData(dayKey);if(!d||!d[arr])return;const idx=d[arr].findIndex(x=>x.id===id);if(idx>-1)d[arr][idx]=updatedItem;if(arr==='sessions')d.sessions.sort((a,b)=>{if(!a.time&&!b.time)return 0;if(!a.time)return 1;if(!b.time)return-1;return a.time.localeCompare(b.time);});if(arr==='schedule')d.schedule.sort((a,b)=>a.start.localeCompare(b.start));saveDayToKey(dayKey,d);render(rerenderSecs);const histEl=document.getElementById('more-history');if(histEl&&histEl.style.display!=='none')renderHistory();}}
@@ -1761,24 +1889,47 @@ function renderSuggestions(keys){
   el.innerHTML=`<div class="section-lbl">💡 Suggestions</div><div class="ov-card" style="margin-bottom:10px;">${tips.map(t=>`<div class="mini-list-item" style="align-items:flex-start;padding:12px 20px;gap:10px;"><div style="font-size:20px;flex-shrink:0;padding-top:1px;">${t.icon}</div><div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:${t.color};margin-bottom:3px;">${t.title}</div><div style="font-size:12px;color:var(--text3);line-height:1.5;">${t.body}</div></div></div>`).join('')}</div>`;
 }
 
-const HIST_PAGE=20;
-let _histShown=HIST_PAGE;
-function _buildHistCard(k){const d=getDayData(k);if(!d)return '';const hrs=sumHours(d.sessions||[]),done=(d.activities||[]).filter(a=>a.done).length,allActs=(d.activities||[]).length;const watchDone=(d.watchlist||[]).filter(w=>w.status==='done').length,allWatch=(d.watchlist||[]).length;const schedCount=(d.schedule||[]).length;const isToday=k===todayKey();const{score}=calcScoreFor(d);const chips=[];if(hrs>0)chips.push(`<span class="hchip hc-a">📚 ${hrs}h</span>`);if(allActs)chips.push(`<span class="hchip hc-t">✅ ${done}/${allActs}</span>`);if(schedCount)chips.push(`<span class="hchip hc-i">🕐 ${schedCount}</span>`);if(allWatch)chips.push(`<span class="hchip hc-r">▶ ${watchDone}/${allWatch}</span>`);if(d.mood)chips.push(`<span class="hchip hc-m">${d.moodEmoji||''} ${d.mood}</span>`);const sessHTML=(d.sessions&&d.sessions.length)?`<div class="rpt-section"><div class="rpt-sec-hd">📚 Study Sessions</div>`+d.sessions.map(s=>{const pl=s.planId?meta.plans.find(p=>p.id===s.planId):null;const timeStr=s.time?' <span style="color:var(--text3);font-size:11px;">@ '+fmt(s.time)+'</span>':'';const planStr=pl?' · <span style="color:var(--amber);font-size:11px;">'+esc(pl.name)+'</span>':'';return `<div class="rpt-row"><div class="rpt-row-l">${esc(s.subject)}${timeStr}${planStr}${s.notes?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">${esc(s.notes)}</div>`:''}</div><div class="rpt-row-r" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">${s.duration}h<div style="display:flex;gap:4px;"><button class="hist-item-edit" onclick="editSession('${s.id}')">✏️ Edit</button><button class="hist-item-del" onclick="removeItem('sessions','${s.id}')">✕</button></div></div></div>`;}).join('')+`<div class="rpt-total">Total: ${hrs}h</div></div>`:'';const schedHTML=(d.schedule&&d.schedule.length)?`<div class="rpt-section"><div class="rpt-sec-hd">🕐 Schedule</div>`+d.schedule.map(s=>{const typeColor={study:'var(--amber)',break:'var(--teal)',activity:'var(--indigo)',watch:'var(--rose)'}[s.type]||'var(--amber)';const doneStr=s.done?'<span style="color:var(--teal);font-size:10px;"> ✓</span>':'';return `<div class="rpt-row"><div class="rpt-row-l">${esc(s.title)}${doneStr}${s.desc?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">${esc(s.desc)}</div>`:''}</div><div class="rpt-row-r" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;"><span style="color:${typeColor};font-size:11px;">${fmt(s.start)}${s.end?' – '+fmt(s.end):''}</span><div style="display:flex;gap:4px;"><button class="hist-item-edit" onclick="editSchedule('${s.id}')">✏️ Edit</button><button class="hist-item-del" onclick="removeItem('schedule','${s.id}')">✕</button></div></div></div>`;}).join('')+`<div class="rpt-total">${d.schedule.filter(s=>s.done).length}/${schedCount} done</div></div>`:'';const actHTML=(d.activities&&d.activities.length)?`<div class="rpt-section"><div class="rpt-sec-hd">✏️ Activities</div>`+d.activities.map(a=>`<div class="rpt-row"><div class="rpt-row-l" style="${a.done?'text-decoration:line-through;color:var(--text3);':''}"><span style="color:${a.done?'var(--teal)':'var(--text3)'}">${a.done?'✓':'○'}</span> ${esc(a.name)}${a.notes?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">${esc(a.notes)}</div>`:''}</div><div class="rpt-row-r" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;"><span class="rpt-priority rpt-p-${a.priority}">${a.priority}</span><div style="display:flex;gap:4px;"><button class="hist-item-edit" onclick="editActivity('${a.id}')">✏️ Edit</button><button class="hist-item-del" onclick="removeItem('activities','${a.id}')">✕</button></div></div></div>`).join('')+`<div class="rpt-total">${done}/${allActs} completed</div></div>`:'';const watchHTML=(d.watchlist&&d.watchlist.length)?`<div class="rpt-section"><div class="rpt-sec-hd">▶ Watch List</div>`+d.watchlist.map(w=>{const plat=getPlat(w.platform);const sc=w.status==='done'?'color:var(--teal)':w.status==='watching'?'color:var(--indigo)':'color:var(--text3)';const sl=w.status==='done'?'✓ Watched':w.status==='watching'?'▶ Watching':'Planned';return `<div class="rpt-row"><div class="rpt-row-l">${esc(w.title)}<span style="font-size:11px;color:var(--text3);"> · ${plat.label}${w.notes?' · '+esc(w.notes):''}</span></div><div class="rpt-row-r" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;"><span style="font-size:11px;${sc}">${sl}</span><div style="display:flex;gap:4px;"><button class="hist-item-edit" onclick="editWatch('${w.id}')">✏️ Edit</button><button class="hist-item-del" onclick="removeItem('watchlist','${w.id}')">✕</button></div></div></div>`;}).join('')+`</div>`:'';const moodHTML=d.mood?`<div class="rpt-section"><div class="rpt-sec-hd">💭 Mood &amp; Rating</div><div class="rpt-row"><div class="rpt-row-l">Mood</div><div class="rpt-row-r">${d.moodEmoji||''} ${d.mood}</div></div>${d.rating?`<div class="rpt-row"><div class="rpt-row-l">Day Rating</div><div class="rpt-row-r" style="color:var(--amber)">${'★'.repeat(d.rating)}${'☆'.repeat(5-d.rating)}</div></div>`:''}</div>`:'';const journalHTML=d.journal?`<div class="rpt-section"><div class="rpt-sec-hd">📝 Journal</div><div style="font-size:13px;color:var(--text2);line-height:1.6;padding:4px 0;font-style:italic;">${esc(d.journal)}</div></div>`:'';const hasDetail=sessHTML||schedHTML||actHTML||watchHTML||moodHTML||journalHTML;return `<div class="hist-card"><div class="hist-rpt-head" onclick="toggleHistDetail('${k}')"><div style="flex:1;"><div style="display:flex;align-items:center;gap:8px;"><div class="hist-date">${fmtKey(k)}${isToday?' <span style="font-size:11px;color:var(--amber)">(Today)</span>':''}</div></div><div class="hist-chips" style="padding:6px 0 0;margin:0;">${chips.join('')||'<span style="font-size:12px;color:var(--text3)">No data</span>'}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">${score>0?`<div class="hist-score-badge">${score}</div>`:''}<span style="font-size:12px;color:var(--text3);">${hasDetail?'▾':'—'}</span></div></div><div class="hist-detail" id="hd-${k}"><div style="padding:4px 18px 16px;">${sessHTML}${schedHTML}${actHTML}${watchHTML}${moodHTML}${journalHTML}${!hasDetail?'<div style="padding:16px 0;font-size:13px;color:var(--text3);text-align:center;">Nothing recorded this day.</div>':''}</div></div></div>`;}
-function renderHistory(reset){if(reset)_histShown=HIST_PAGE;const keys=getAllDayKeys();const el=document.getElementById('history-list');if(!keys.length){el.innerHTML=emptyHTML('🗂','No history yet.');return;}const visible=keys.slice(0,_histShown);const remaining=keys.length-_histShown;const cards=visible.map(_buildHistCard).join('');const more=remaining>0?`<div style="padding:16px 20px;"><button class="btn btn-ghost btn-full" onclick="loadMoreHistory()">Load ${Math.min(remaining,HIST_PAGE)} more (${remaining} remaining)</button></div>`:'';el.innerHTML=cards+more;}
-function loadMoreHistory(){_histShown+=HIST_PAGE;renderHistory();}
-function toggleHistDetail(k){
-  const el=document.getElementById('hd-'+k);
-  if(!el)return;
-  const opening=!el.classList.contains('open');
-  el.classList.toggle('open');
-  if(opening){
-    /* Scroll card into view on mobile after expand */
-    setTimeout(()=>{
-      const card=el.closest('.hist-card');
-      if(card)card.scrollIntoView({behavior:'smooth',block:'nearest'});
-    },80);
-  }
+const HIST_PAGE=20;let _histShown=HIST_PAGE;
+function _buildHistCard(k){
+  const d=getDayData(k);if(!d)return '';
+  const hrs=sumHours(d.sessions||[]),done=(d.activities||[]).filter(a=>a.done).length,allActs=(d.activities||[]).length;
+  const watchDone=(d.watchlist||[]).filter(w=>w.status==='done').length,allWatch=(d.watchlist||[]).length;
+  const schedCount=(d.schedule||[]).length,isToday=k===todayKey();
+  const{score}=calcScoreFor(d);
+  const chips=[];
+  if(hrs>0)chips.push(`<span class="hchip hc-a">📚 ${hrs}h</span>`);
+  if(allActs)chips.push(`<span class="hchip hc-t">✅ ${done}/${allActs}</span>`);
+  if(schedCount)chips.push(`<span class="hchip hc-i">🕐 ${schedCount}</span>`);
+  if(allWatch)chips.push(`<span class="hchip hc-r">▶ ${watchDone}/${allWatch}</span>`);
+  if(d.mood)chips.push(`<span class="hchip hc-m">${d.moodEmoji||''} ${d.mood}</span>`);
+  const hasDetail=!!(hrs||allActs||schedCount||allWatch||d.mood||d.journal);
+  return `<div class="hist-card"><div class="hist-rpt-head" onclick="toggleHistDetail('${k}')"><div style="flex:1;"><div style="display:flex;align-items:center;gap:8px;"><div class="hist-date">${fmtKey(k)}${isToday?' <span style="font-size:11px;color:var(--amber)">(Today)</span>':''}</div></div><div class="hist-chips" style="padding:6px 0 0;margin:0;">${chips.join('')||'<span style="font-size:12px;color:var(--text3)">No data</span>'}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">${score>0?`<div class="hist-score-badge">${score}</div>`:''}<span style="font-size:12px;color:var(--text3);">${hasDetail?'▾':'—'}</span></div></div><div class="hist-detail" id="hd-${k}"></div></div>`;
 }
+function _renderHistDetail(k){
+  const el=document.getElementById('hd-'+k);if(!el)return;
+  const d=getDayData(k);if(!d){el.innerHTML='';return;}
+  const hrs=sumHours(d.sessions||[]),done=(d.activities||[]).filter(a=>a.done).length,allActs=(d.activities||[]).length,schedCount=(d.schedule||[]).length;
+  const S=s=>{const pl=s.planId?meta.plans.find(p=>p.id===s.planId):null;return `<div class="rpt-row"><div class="rpt-row-l">${esc(s.subject)}${s.time?` <span style="color:var(--text3);font-size:11px;">@ ${fmt(s.time)}</span>`:''}${pl?` · <span style="color:var(--amber);font-size:11px;">${esc(pl.name)}</span>`:''}${s.notes?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">${esc(s.notes)}</div>`:''}</div><div class="rpt-row-r" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">${s.duration}h<div style="display:flex;gap:4px;"><button class="hist-item-edit" onclick="editSession('${s.id}')">✏️</button><button class="hist-item-del" onclick="removeItem('sessions','${s.id}')">✕</button></div></div></div>`;};
+  const SC=s=>{const c={study:'var(--amber)',break:'var(--teal)',activity:'var(--indigo)',watch:'var(--rose)'}[s.type]||'var(--amber)';return `<div class="rpt-row"><div class="rpt-row-l">${esc(s.title)}${s.done?'<span style="color:var(--teal);font-size:10px;"> ✓</span>':''}${s.desc?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">${esc(s.desc)}</div>`:''}</div><div class="rpt-row-r" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;"><span style="color:${c};font-size:11px;">${fmt(s.start)}${s.end?' – '+fmt(s.end):''}</span><div style="display:flex;gap:4px;"><button class="hist-item-edit" onclick="editSchedule('${s.id}')">✏️</button><button class="hist-item-del" onclick="removeItem('schedule','${s.id}')">✕</button></div></div></div>`;};
+  const A=a=>`<div class="rpt-row"><div class="rpt-row-l" style="${a.done?'text-decoration:line-through;color:var(--text3);':''}"><span style="color:${a.done?'var(--teal)':'var(--text3)'}">${a.done?'✓':'○'}</span> ${esc(a.name)}${a.notes?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">${esc(a.notes)}</div>`:''}</div><div class="rpt-row-r" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;"><span class="rpt-priority rpt-p-${a.priority}">${a.priority}</span><div style="display:flex;gap:4px;"><button class="hist-item-edit" onclick="editActivity('${a.id}')">✏️</button><button class="hist-item-del" onclick="removeItem('activities','${a.id}')">✕</button></div></div></div>`;
+  const W=w=>{const pl=getPlat(w.platform);const sc=w.status==='done'?'color:var(--teal)':w.status==='watching'?'color:var(--indigo)':'color:var(--text3)';return `<div class="rpt-row"><div class="rpt-row-l">${esc(w.title)}<span style="font-size:11px;color:var(--text3);"> · ${pl.label}${w.notes?' · '+esc(w.notes):''}</span></div><div class="rpt-row-r" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;"><span style="font-size:11px;${sc}">${w.status==='done'?'✓':w.status==='watching'?'▶':'⏳'}</span><div style="display:flex;gap:4px;"><button class="hist-item-edit" onclick="editWatch('${w.id}')">✏️</button><button class="hist-item-del" onclick="removeItem('watchlist','${w.id}')">✕</button></div></div></div>`;};
+  const sH=(d.sessions||[]).length?`<div class="rpt-section"><div class="rpt-sec-hd">📚 Study</div>${d.sessions.map(S).join('')}<div class="rpt-total">${hrs}h</div></div>`:'';
+  const scH=(d.schedule||[]).length?`<div class="rpt-section"><div class="rpt-sec-hd">🕐 Schedule</div>${d.schedule.map(SC).join('')}<div class="rpt-total">${d.schedule.filter(s=>s.done).length}/${schedCount}</div></div>`:'';
+  const aH=(d.activities||[]).length?`<div class="rpt-section"><div class="rpt-sec-hd">✏️ Activities</div>${d.activities.map(A).join('')}<div class="rpt-total">${done}/${allActs}</div></div>`:'';
+  const wH=(d.watchlist||[]).length?`<div class="rpt-section"><div class="rpt-sec-hd">▶ Watch</div>${d.watchlist.map(W).join('')}</div>`:'';
+  const mH=d.mood?`<div class="rpt-section"><div class="rpt-sec-hd">💭 Mood</div><div class="rpt-row"><div class="rpt-row-l">Mood</div><div class="rpt-row-r">${d.moodEmoji||''} ${d.mood}</div></div>${d.rating?`<div class="rpt-row"><div class="rpt-row-l">Rating</div><div class="rpt-row-r" style="color:var(--amber)">${'★'.repeat(d.rating)}${'☆'.repeat(5-d.rating)}</div></div>`:''}</div>`:'';
+  const jH=d.journal?`<div class="rpt-section"><div class="rpt-sec-hd">📝 Journal</div><div style="font-size:13px;color:var(--text2);line-height:1.6;font-style:italic;">${esc(d.journal)}</div></div>`:'';
+  el.innerHTML=`<div style="padding:4px 18px 16px;">${sH}${scH}${aH}${wH}${mH}${jH}${!(sH||scH||aH||wH||mH||jH)?'<div style="padding:16px 0;font-size:13px;color:var(--text3);text-align:center;">Nothing recorded.</div>':''}</div>`;
+}
+function toggleHistDetail(k){
+  const el=document.getElementById('hd-'+k);if(!el)return;
+  const opening=!el.classList.contains('open');
+  if(opening&&!el.innerHTML.trim())_renderHistDetail(k);
+  el.classList.toggle('open');
+  if(opening)setTimeout(()=>{el.closest('.hist-card')?.scrollIntoView({behavior:'smooth',block:'nearest'});},80);
+}
+function renderHistory(reset){if(reset)_histShown=HIST_PAGE;const keys=getAllDayKeys();const el=document.getElementById('history-list');if(!keys.length){el.innerHTML=emptyHTML('🗂','No history yet.');return;}const visible=keys.slice(0,_histShown);const remaining=keys.length-_histShown;el.innerHTML=visible.map(_buildHistCard).join('')+(remaining>0?`<div style="padding:16px 20px;"><button class="btn btn-ghost btn-full" onclick="loadMoreHistory()">Load ${Math.min(remaining,HIST_PAGE)} more (${remaining} remaining)</button></div>`:'');}
+function loadMoreHistory(){_histShown+=HIST_PAGE;renderHistory();}
 
 function clearToday(){if(!confirm('Clear all of today\'s data? Cannot be undone.'))return;localStorage.removeItem(STORE+currentKey);invalidateDayKeysCache();_invalidatePlanCache();_invalidateWatchCache();if(_currentUser){window._fbSaveDay(_currentUser.uid,currentKey,emptyDay()).catch(()=>{});}data=emptyDay();_selectedPlanId=null;renderAll();renderSettings();renderPlanQuickPick();}
 function renderSettings(){const keys=getAllDayKeys();let totalBytes=0;for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&(k.startsWith(STORE)||k===META_K))totalBytes+=(localStorage.getItem(k)||'').length*2;}if(_currentUser){const nameEl=document.getElementById('acct-name');const emailEl=document.getElementById('acct-email');if(nameEl)nameEl.textContent=_currentUser.displayName||'(no display name)';if(emailEl)emailEl.textContent=_currentUser.email;_applyStreak(meta.streak);}const verLbl=document.getElementById('settings-ver-lbl');if(verLbl)verLbl.textContent='Version '+APP_VERSION+' · Build 20260511';document.getElementById('storage-info').innerHTML=`<div class="mini-list-item"><div class="mli-left">Days tracked</div><div class="mli-right">${keys.length}</div></div><div class="mini-list-item"><div class="mli-left">Local storage used</div><div class="mli-right">${(totalBytes/1024).toFixed(1)} KB</div></div><div class="mini-list-item"><div class="mli-left">Plans created</div><div class="mli-right">${meta.plans.length}</div></div><div class="mini-list-item"><div class="mli-left">Courses saved</div><div class="mli-right">${meta.courses.length}</div></div><div class="mini-list-item"><div class="mli-left">Current streak</div><div class="mli-right">${meta.streak} days</div></div><div class="mini-list-item"><div class="mli-left">App version</div><div class="mli-right"><span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--amber);">v${APP_VERSION}</span></div></div>`;}
