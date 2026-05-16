@@ -1805,8 +1805,19 @@ const _sectionMap={sessions:['sessions','overview','score'],schedule:['schedule'
 function findItemDay(arr,id){if(data[arr]&&data[arr].find(x=>x.id===id))return currentKey;const keys=getAllDayKeys();for(const k of keys){if(k===currentKey)continue;const d=getDayData(k);if(d&&d[arr]&&d[arr].find(x=>x.id===id))return k;}return null;}
 function mutateItemDay(arr,id,mutateFn,rerenderSecs){const dayKey=findItemDay(arr,id);if(!dayKey)return;if(dayKey===currentKey){mutateFn(data[arr]);saveDay(rerenderSecs);}else{const d=getDayData(dayKey);if(!d||!d[arr])return;mutateFn(d[arr]);saveDayToKey(dayKey,d);render(rerenderSecs);const histEl=document.getElementById('more-history');if(histEl&&histEl.style.display!=='none')renderHistory();}}
 function removeItem(arr,id){
+  /* Find which day before deleting from memory */
+  const dayKey=findItemDay(arr,id);
   deleteItemFromDay(arr,id,_sectionMap[arr]||null);
-  if(arr==='watchlist'){_invalidateWatchCache();if(_subActive('more-weekly'))renderWatchAnalytics();}
+  if(arr==='watchlist'){
+    _invalidateWatchCache();
+    /* Force-push updated day to Firestore immediately (no debounce) to prevent re-merge */
+    if(_currentUser&&dayKey){
+      const updatedDay=dayKey===currentKey?data:getDayData(dayKey);
+      if(updatedDay)window._fbSaveDay(_currentUser.uid,dayKey,updatedDay).catch(()=>{});
+    }
+    if(_subActive('more-weekly'))renderWatchAnalytics();
+    renderWatch();
+  }
 }
 function toggleDone(id){mutateItemDay('activities',id,a=>{const x=a.find(i=>i.id===id);if(x)x.done=!x.done;},['activities','overview','score']);}
 function changeWatchStatus(id,val){
