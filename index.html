@@ -1081,9 +1081,9 @@ select option{background:var(--surf2);}
       <!-- ─── ACTIVITY ─── -->
       <div class="section" id="sec-activity">
         <div class="subnav">
-          <button class="subnav-btn active" onclick="switchSubnav(this,'act-general')">✏️ Activities</button>
-          <button class="subnav-btn" onclick="switchSubnav(this,'act-sleep')">😴 Sleep</button>
-          <button class="subnav-btn" onclick="switchSubnav(this,'act-workout')">💪 Workout</button>
+          <button class="subnav-btn active" onclick="switchSubnav(this,'act-general');renderActivities();">✏️ Activities</button>
+          <button class="subnav-btn" onclick="switchSubnav(this,'act-sleep');renderSleepList();">😴 Sleep</button>
+          <button class="subnav-btn" onclick="switchSubnav(this,'act-workout');renderWorkoutList();">💪 Workout</button>
         </div>
 
         <!-- Activities tab -->
