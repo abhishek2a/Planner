@@ -12,6 +12,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+  import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app-check.js";
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
   import {
     getAuth,
@@ -46,6 +47,44 @@
   };
 
   const app  = initializeApp(firebaseConfig);
+
+  /* ── Firebase App Check (reCAPTCHA v3) ──
+     Must run before any Auth/Firestore calls.
+     Fails gracefully — app still works if App Check unavailable. */
+  (function(){
+    try{
+      /* Allow localhost + file:// for dev testing without App Check */
+      const host=location.hostname;
+      const isLocal=host==='localhost'||host==='127.0.0.1'||host===''||location.protocol==='file:';
+      if(isLocal){
+        /* Enable debug token for local dev — token printed to console */
+        self.FIREBASE_APPCHECK_DEBUG_TOKEN=true;
+      }
+      initializeAppCheck(app,{
+        provider:new ReCaptchaV3Provider('6LdZTe0sAAAAAA6uCHm_It7y8CIWqXq4r3gEXwqQ'),
+        isTokenAutoRefreshEnabled:true
+      });
+      window._appCheckReady=true;
+    }catch(e){
+      /* App Check failure must never break the app */
+      console.warn('[AppCheck] Failed to initialize:',e&&e.message);
+      window._appCheckReady=false;
+      /* Report to crash telemetry if available */
+      window._crFirebaseError&&window._crFirebaseError('AppCheck init failed: '+(e&&e.message),{stack:e&&e.stack});
+    }
+  })();
+
+  /* ── Dev helper ── */
+  window.debugAppCheck=()=>{
+    const state={
+      ready:!!window._appCheckReady,
+      host:location.hostname,
+      isLocal:location.hostname==='localhost'||location.hostname==='127.0.0.1'||location.protocol==='file:',
+      siteKey:'6LdZTe0sAAAAAA6uCHm_It7y8CIWqXq4r3gEXwqQ'
+    };
+    console.table(state);
+    return state;
+  };
   const analytics = getAnalytics(app);
   const auth = getAuth(app);
   const db   = getFirestore(app);
