@@ -1314,6 +1314,11 @@ select option{background:var(--surf2);}
 </div><!-- .app -->
 
 <script>
+/* ── Early error capture — runs before any other code ── */
+window._earlyErrors=[];
+window.onerror=function(msg,file,line,col,err){window._earlyErrors.push({type:'runtime',msg,file,line,col,stack:err&&err.stack,ts:new Date().toISOString()});return false;};
+window.onunhandledrejection=function(ev){const r=ev&&ev.reason;window._earlyErrors.push({type:'promise',msg:r instanceof Error?r.message:String(r||''),stack:r instanceof Error?r.stack:null,ts:new Date().toISOString()});};
+/* ── End early capture ── */
 (function(){
   const manifest={name:"Planner",short_name:"Planner",start_url:"./",display:"standalone",background_color:"#080706",theme_color:"#080706",orientation:"portrait-primary"};
   const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
@@ -2117,16 +2122,22 @@ function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user
     }catch(e){/* never throw from reporter */}
   }
 
-  /* ── Global handlers ── */
+  /* ── Global handlers (replace early stubs) ── */
   window.onerror=function(msg,file,line,col,err){
     _report('runtime',msg,{file,line,col,stack:err&&err.stack});
-    return false; /* don't suppress */
+    return false;
   };
   window.onunhandledrejection=function(ev){
     const reason=ev&&ev.reason;
     const msg=reason instanceof Error?reason.message:String(reason||'UnhandledRejection');
     _report('promise',msg,{stack:reason instanceof Error?reason.stack:null});
   };
+
+  /* ── Flush errors caught before reporter was ready ── */
+  if(window._earlyErrors&&window._earlyErrors.length){
+    window._earlyErrors.forEach(e=>_report(e.type,e.msg,{file:e.file,line:e.line,col:e.col,stack:e.stack}));
+    window._earlyErrors=[];
+  }
 
   /* ── Heartbeat: detect freeze/kill ── */
   function _startHeartbeat(){
