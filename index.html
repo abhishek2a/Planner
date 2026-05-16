@@ -1710,16 +1710,21 @@ function calcSleepDur(){
 function timeToMin(t){const[h,m]=t.split(':');return +h*60+ +m;}
 function addSleep(){
   const start=getTime('tp-sleep-start'),end=getTime('tp-sleep-end');
-  const dur=parseFloat(document.getElementById('sleep-dur').value)||0;
-  if(!start||!end){alert('⚠️ Enter sleep and wake time.');return;}
+  if(!start||!end){alert('⚠️ Select both sleep time and wake time (hour + minute).');return;}
+  let dur=parseFloat(document.getElementById('sleep-dur').value)||0;
+  if(!dur){
+    let sm=timeToMin(start),em=timeToMin(end);
+    if(em<=sm)em+=1440;
+    dur=Math.round((em-sm)/60*4)/4;
+  }
   const dateVal=document.getElementById('sleep-date').value||'';
   const entry={id:uid(),category:'sleep',sleepTime:start,wakeTime:end,duration:dur,
     quality:document.getElementById('sleep-quality').value,
     notes:document.getElementById('sleep-notes').value.trim(),
-    name:'Sleep',priority:'med',done:true,time:start};
+    name:'Sleep '+dur+'h',priority:'med',done:true,time:start};
   const targetKey=dateVal||currentKey,isFuture=dateVal&&dateVal!==currentKey;
-  if(isFuture){const d=getOrCreateDayData(targetKey);d.activities.push(entry);saveDayToKey(targetKey,d);alert('✓ Saved for '+fmtKey(targetKey));}
-  else{data.activities.push(entry);saveDay(['activities','overview']);}
+  if(isFuture){const d=getOrCreateDayData(targetKey);d.activities=d.activities||[];d.activities.push(entry);saveDayToKey(targetKey,d);alert('✓ Saved for '+fmtKey(targetKey));}
+  else{data.activities=data.activities||[];data.activities.push(entry);saveDay(['activities','overview']);}
   resetTP('tp-sleep-start');resetTP('tp-sleep-end');
   document.getElementById('sleep-dur').value='';
   document.getElementById('sleep-notes').value='';
@@ -1821,40 +1826,15 @@ function _getWeekActStats(){
 function renderActivities(){
   const el=document.getElementById('activity-list');
   const statsEl=document.getElementById('act-stats-grid');
-  const catIcon={sleep:'😴',workout:'💪',general:''};
-  if(!data.activities.length){el.innerHTML=emptyHTML('✅','No activities yet');statsEl.style.display='none';return;}
-  el.innerHTML=data.activities.map(a=>{
-    const icon=catIcon[a.category||'general']||'';
+  /* Only show general activities — sleep/workout have their own tabs */
+  const acts=data.activities.filter(a=>!a.category||a.category==='general');
+  if(!acts.length){el.innerHTML=emptyHTML('✅','No activities yet');statsEl.style.display='none';const old=document.getElementById('act-prog-wrap');if(old)old.remove();return;}
+  el.innerHTML=acts.map(a=>{
     const durTxt=a.duration?`<span style="font-size:11px;color:var(--amber);margin-left:4px;">${a.duration}h</span>`:'';
-    return `<div class="act-card ${a.done?'completed':''}"><div class="act-top"><div class="act-name">${icon?`<span>${icon} </span>`:''}${esc(a.name)}${a.time?`<div style="font-size:12px;color:var(--text3);font-weight:400;">@ ${fmt(a.time)}</div>`:''}${a.carriedFrom?`<div style="font-size:10px;color:var(--indigo);margin-top:2px;">🔄 from ${fmtKey(a.carriedFrom).split(',')[0]}</div>`:''}</div><div style="display:flex;align-items:center;gap:6px;">${durTxt}<div class="priority-dot dot-${a.priority}"></div></div></div>${a.notes?`<div class="act-note">${esc(a.notes)}</div>`:''}<div class="act-foot"><label class="check-row"><input type="checkbox" ${a.done?'checked':''} onchange="toggleDone('${a.id}')"> Done</label><div style="display:flex;gap:6px;"><button class="btn-edit" onclick="editActivity('${a.id}')">✏️</button><button class="btn-del" onclick="removeItem('activities','${a.id}')">✕</button></div></div></div>`;
+    return `<div class="act-card ${a.done?'completed':''}"><div class="act-top"><div class="act-name">${esc(a.name)}${a.time?`<div style="font-size:12px;color:var(--text3);font-weight:400;">@ ${fmt(a.time)}</div>`:''}${a.carriedFrom?`<div style="font-size:10px;color:var(--indigo);margin-top:2px;">🔄 from ${fmtKey(a.carriedFrom).split(',')[0]}</div>`:''}</div><div style="display:flex;align-items:center;gap:6px;">${durTxt}<div class="priority-dot dot-${a.priority}"></div></div></div>${a.notes?`<div class="act-note">${esc(a.notes)}</div>`:''}<div class="act-foot"><label class="check-row"><input type="checkbox" ${a.done?'checked':''} onchange="toggleDone('${a.id}')"> Done</label><div style="display:flex;gap:6px;"><button class="btn-edit" onclick="editActivity('${a.id}')">✏️</button><button class="btn-del" onclick="removeItem('activities','${a.id}')">✕</button></div></div></div>`;
   }).join('');
-  /* 7-day sleep/workout summary */
-  const ws=_getWeekActStats();
-  const todaySleep=data.activities.filter(a=>a.category==='sleep').reduce((s,a)=>s+(a.duration||0),0);
-  const todayWork=data.activities.filter(a=>a.category==='workout').reduce((s,a)=>s+(a.duration||0),0);
-  const hasSW=ws.sD>0||ws.wD>0||todaySleep>0||todayWork>0;
-  if(hasSW){
-    const sleepPct=Math.min(100,Math.round((ws.sH/(7*7))*100));
-    const workPct=Math.min(100,Math.round((ws.wH/9)*100));
-    statsEl.style.display='grid';
-    statsEl.innerHTML=`
-      ${ws.sD>0||todaySleep?`<div class="stat-card sc-indigo"><div class="stat-val" style="font-size:1.3rem;">${todaySleep?todaySleep+'h':'—'}</div><div class="stat-lbl">😴 Today Sleep</div></div><div class="stat-card sc-indigo"><div class="stat-val" style="font-size:1.3rem;">${ws.sH?ws.sH+'h':'0'}</div><div class="stat-lbl">Week Sleep (${ws.sD}d)</div></div>`:''}
-      ${ws.wD>0||todayWork?`<div class="stat-card sc-teal"><div class="stat-val" style="font-size:1.3rem;">${todayWork?todayWork+'h':'—'}</div><div class="stat-lbl">💪 Today Workout</div></div><div class="stat-card sc-teal"><div class="stat-val" style="font-size:1.3rem;">${ws.wH?ws.wH+'h':'0'}</div><div class="stat-lbl">Week Workout (${ws.wD}d)</div></div>`:''}
-    `;
-    /* Progress bars */
-    const progHTML=[
-      ws.sD>0?`<div class="prog-wrap"><div class="prog-row"><span>😴 Weekly Sleep Goal (49h)</span><span>${ws.sH}h / 49h · ${sleepPct}%</span></div><div class="prog-bar"><div class="prog-fill" style="width:${sleepPct}%;background:linear-gradient(90deg,#3848c0,var(--indigo))"></div></div></div>`:'',
-      ws.wD>0?`<div class="prog-wrap"><div class="prog-row"><span>💪 Weekly Workout Goal (9h)</span><span>${ws.wH}h / 9h · ${workPct}%</span></div><div class="prog-bar"><div class="prog-fill pf-teal" style="width:${workPct}%"></div></div></div>`:''
-    ].join('');
-    statsEl.insertAdjacentHTML('afterend','<div id="act-prog-wrap" style="margin-top:4px;">'+progHTML+'</div>');
-    /* remove old prog wrap if exists to avoid duplication */
-    const old=document.querySelectorAll('#act-prog-wrap');
-    if(old.length>1)old[0].remove();
-  } else {
-    statsEl.style.display='none';
-    const old=document.getElementById('act-prog-wrap');
-    if(old)old.remove();
-  }
+  statsEl.style.display='none';
+  const old=document.getElementById('act-prog-wrap');if(old)old.remove();
 }
 let _watchFilter='all';
 function setWatchFilter(f){
@@ -2015,7 +1995,7 @@ function toggleHistDetail(k){
 function renderHistory(reset){if(reset)_histShown=HIST_PAGE;const keys=getAllDayKeys();const el=document.getElementById('history-list');if(!keys.length){el.innerHTML=emptyHTML('🗂','No history yet.');return;}const visible=keys.slice(0,_histShown);const remaining=keys.length-_histShown;el.innerHTML=visible.map(_buildHistCard).join('')+(remaining>0?`<div style="padding:16px 20px;"><button class="btn btn-ghost btn-full" onclick="loadMoreHistory()">Load ${Math.min(remaining,HIST_PAGE)} more (${remaining} remaining)</button></div>`:'');}
 function loadMoreHistory(){_histShown+=HIST_PAGE;renderHistory();}
 
-function clearToday(){if(!confirm('Clear all of today\'s data? Cannot be undone.'))return;localStorage.removeItem(STORE+currentKey);invalidateDayKeysCache();_invalidatePlanCache();_invalidateWatchCache();if(_currentUser){window._fbSaveDay(_currentUser.uid,currentKey,emptyDay()).catch(()=>{});}data=emptyDay();_selectedPlanId=null;renderAll();renderSettings();renderPlanQuickPick();}
+function clearToday(){if(!confirm("Clear all of today's data? Cannot be undone."))return;localStorage.removeItem(STORE+currentKey);invalidateDayKeysCache();_invalidateDayDataCache(currentKey);_invalidatePlanCache();_invalidateWatchCache();if(_currentUser){window._fbSaveDay(_currentUser.uid,currentKey,emptyDay()).catch(()=>{});}data=emptyDay();_selectedPlanId=null;renderAll();renderSleepList();renderWorkoutList();renderSettings();renderPlanQuickPick();if(_subActive('more-weekly')){try{renderSleepWorkoutAnalytics();}catch(e){}}}
 function renderSettings(){const keys=getAllDayKeys();let totalBytes=0;for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&(k.startsWith(STORE)||k===META_K))totalBytes+=(localStorage.getItem(k)||'').length*2;}if(_currentUser){const nameEl=document.getElementById('acct-name');const emailEl=document.getElementById('acct-email');if(nameEl)nameEl.textContent=_currentUser.displayName||'(no display name)';if(emailEl)emailEl.textContent=_currentUser.email;_applyStreak(meta.streak);}const verLbl=document.getElementById('settings-ver-lbl');if(verLbl)verLbl.textContent='Version '+APP_VERSION+' · Build 20260511';document.getElementById('storage-info').innerHTML=`<div class="mini-list-item"><div class="mli-left">Days tracked</div><div class="mli-right">${keys.length}</div></div><div class="mini-list-item"><div class="mli-left">Local storage used</div><div class="mli-right">${(totalBytes/1024).toFixed(1)} KB</div></div><div class="mini-list-item"><div class="mli-left">Plans created</div><div class="mli-right">${meta.plans.length}</div></div><div class="mini-list-item"><div class="mli-left">Courses saved</div><div class="mli-right">${meta.courses.length}</div></div><div class="mini-list-item"><div class="mli-left">Current streak</div><div class="mli-right">${meta.streak} days</div></div><div class="mini-list-item"><div class="mli-left">App version</div><div class="mli-right"><span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--amber);">v${APP_VERSION}</span></div></div>`;}
 
 function initDate(){const now=new Date();document.getElementById('date-pill').textContent=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][now.getDay()]+' '+MTHS[now.getMonth()]+' '+now.getDate();const name=_currentUser?(_currentUser.displayName||_currentUser.email.split('@')[0]):'';document.getElementById('header-sub').textContent=getGreeting(now,name);}
