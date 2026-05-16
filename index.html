@@ -1106,9 +1106,9 @@ select option{background:var(--surf2);}
         <div id="act-sleep" style="display:none;">
           <div class="panel">
             <div class="panel-label">Log Sleep</div>
-            <div class="form-group"><label class="field-label">Sleep Time</label><div class="tp-wrap" id="tp-sleep-start"><select class="tp-h" onchange="calcSleepDur()"><option value="">--</option></select><span class="tp-sep">:</span><select class="tp-m" onchange="calcSleepDur()"><option value="">--</option></select><select class="tp-ap" onchange="calcSleepDur()"><option>AM</option><option>PM</option></select></div></div>
-            <div class="form-group"><label class="field-label">Wake Up Time</label><div class="tp-wrap" id="tp-sleep-end"><select class="tp-h" onchange="calcSleepDur()"><option value="">--</option></select><span class="tp-sep">:</span><select class="tp-m" onchange="calcSleepDur()"><option value="">--</option></select><select class="tp-ap" onchange="calcSleepDur()"><option>AM</option><option>PM</option></select></div></div>
-            <div class="form-group"><label class="field-label">Duration (auto-calculated)</label><input type="number" id="sleep-dur" min="0.5" max="24" step="0.25" placeholder="hours" readonly style="color:var(--amber);font-weight:700;"></div>
+            <div class="form-group"><label class="field-label">Duration (hours) <span style="color:var(--text3);font-weight:400;">e.g. 7.5</span></label><input type="number" id="sleep-dur" min="0.5" max="24" step="0.25" placeholder="e.g. 7.5" style="color:var(--amber);font-weight:700;"></div>
+            <div class="form-group"><label class="field-label">Sleep Time <span style="color:var(--text3);font-weight:400;">(optional)</span></label><div class="tp-wrap" id="tp-sleep-start"><select class="tp-h" onchange="calcSleepDur()"><option value="">--</option></select><span class="tp-sep">:</span><select class="tp-m" onchange="calcSleepDur()"><option value="">--</option></select><select class="tp-ap" onchange="calcSleepDur()"><option>AM</option><option>PM</option></select></div></div>
+            <div class="form-group"><label class="field-label">Wake Up Time <span style="color:var(--text3);font-weight:400;">(optional)</span></label><div class="tp-wrap" id="tp-sleep-end"><select class="tp-h" onchange="calcSleepDur()"><option value="">--</option></select><span class="tp-sep">:</span><select class="tp-m" onchange="calcSleepDur()"><option value="">--</option></select><select class="tp-ap" onchange="calcSleepDur()"><option>AM</option><option>PM</option></select></div></div>
             <div class="form-group"><label class="field-label">Quality</label><select id="sleep-quality"><option value="good">😊 Good</option><option value="okay">😐 Okay</option><option value="poor">😴 Poor</option></select></div>
             <div class="form-group"><label class="field-label">Notes</label><input type="text" id="sleep-notes" placeholder="Dreams, interruptions…"></div>
             <div class="form-group"><label class="field-label">📅 Date</label><input type="date" id="sleep-date" style="color-scheme:dark;"></div>
@@ -1708,20 +1708,19 @@ function calcSleepDur(){
   document.getElementById('sleep-dur').value=Math.round((em-sm)/60*4)/4||'';
 }
 function timeToMin(t){const[h,m]=t.split(':');return +h*60+ +m;}
+function minToFmt(m){const h=Math.floor(m/60)%24,mn=m%60;return(h%12||12)+':'+(mn<10?'0'+mn:mn)+(h>=12?' PM':' AM');}
+function safeTimeFmt(t){try{return t?minToFmt(timeToMin(t)):'—';}catch(e){return t||'—';}}
 function addSleep(){
   const start=getTime('tp-sleep-start'),end=getTime('tp-sleep-end');
-  if(!start||!end){alert('⚠️ Select both sleep time and wake time (hour + minute).');return;}
   let dur=parseFloat(document.getElementById('sleep-dur').value)||0;
-  if(!dur){
-    let sm=timeToMin(start),em=timeToMin(end);
-    if(em<=sm)em+=1440;
-    dur=Math.round((em-sm)/60*4)/4;
-  }
+  /* Auto-calc from times if dur not entered */
+  if(!dur&&start&&end){let sm=timeToMin(start),em=timeToMin(end);if(em<=sm)em+=1440;dur=Math.round((em-sm)/60*4)/4;}
+  if(!dur){alert('⚠️ Enter duration or select sleep & wake times.');return;}
   const dateVal=document.getElementById('sleep-date').value||'';
-  const entry={id:uid(),category:'sleep',sleepTime:start,wakeTime:end,duration:dur,
+  const entry={id:uid(),category:'sleep',sleepTime:start||'',wakeTime:end||'',duration:dur,
     quality:document.getElementById('sleep-quality').value,
     notes:document.getElementById('sleep-notes').value.trim(),
-    name:'Sleep '+dur+'h',priority:'med',done:true,time:start};
+    name:'Sleep '+dur+'h',priority:'med',done:true,time:start||''};
   const targetKey=dateVal||currentKey,isFuture=dateVal&&dateVal!==currentKey;
   if(isFuture){const d=getOrCreateDayData(targetKey);d.activities=d.activities||[];d.activities.push(entry);saveDayToKey(targetKey,d);alert('✓ Saved for '+fmtKey(targetKey));}
   else{data.activities=data.activities||[];data.activities.push(entry);saveDay(['activities','overview']);}
@@ -1760,7 +1759,7 @@ function renderSleepList(){
   const totalH=sleepActs.reduce((s,a)=>s+(a.duration||0),0);
   el.innerHTML=sleepActs.map(a=>{
     const qIcon={good:'😊',okay:'😐',poor:'😴'}[a.quality||'good']||'😴';
-    return `<div class="list-item"><div class="item-bar bar-indigo"></div><div class="item-time">${a.sleepTime?minToFmt(timeToMin(a.sleepTime)):'—'}</div><div class="item-info"><div class="item-title">${qIcon} ${a.duration||'?'}h sleep</div><div class="item-sub">Wake: ${a.wakeTime?minToFmt(timeToMin(a.wakeTime)):'—'}${a.notes?' · '+esc(a.notes):''}</div></div><button class="btn-del" onclick="removeItem('activities','${a.id}');renderSleepList()">✕</button></div>`;
+    return `<div class="list-item"><div class="item-bar bar-indigo"></div><div class="item-time">${safeTimeFmt(a.sleepTime)}</div><div class="item-info"><div class="item-title">${qIcon} ${a.duration||'?'}h sleep</div><div class="item-sub">Wake: ${safeTimeFmt(a.wakeTime)}${a.notes?' · '+esc(a.notes):''}</div></div><button class="btn-del" onclick="removeItem('activities','${a.id}');renderSleepList()">✕</button></div>`;
   }).join('');
   /* 7-day stats */
   const ws=_getWeekActStats();
@@ -1791,7 +1790,7 @@ function addWatch(){const title=document.getElementById('watch-title').value.tri
 
 function getItemFromAnyDay(arr,id){if(data[arr]){const item=data[arr].find(x=>x.id===id);if(item)return{item:JSON.parse(JSON.stringify(item)),dayKey:currentKey};}const keys=getAllDayKeys();for(const k of keys){if(k===currentKey)continue;const d=getDayData(k);if(d&&d[arr]){const item=d[arr].find(x=>x.id===id);if(item)return{item:JSON.parse(JSON.stringify(item)),dayKey:k};}}return null;}
 function saveItemToDay(arr,id,updatedItem,rerenderSecs){const result=getItemFromAnyDay(arr,id);if(!result)return;const{dayKey}=result;if(dayKey===currentKey){const idx=data[arr].findIndex(x=>x.id===id);if(idx>-1)data[arr][idx]=updatedItem;if(arr==='sessions')data.sessions.sort((a,b)=>{if(!a.time&&!b.time)return 0;if(!a.time)return 1;if(!b.time)return-1;return a.time.localeCompare(b.time);});if(arr==='schedule')data.schedule.sort((a,b)=>a.start.localeCompare(b.start));saveDay(rerenderSecs);}else{const d=getDayData(dayKey);if(!d||!d[arr])return;const idx=d[arr].findIndex(x=>x.id===id);if(idx>-1)d[arr][idx]=updatedItem;if(arr==='sessions')d.sessions.sort((a,b)=>{if(!a.time&&!b.time)return 0;if(!a.time)return 1;if(!b.time)return-1;return a.time.localeCompare(b.time);});if(arr==='schedule')d.schedule.sort((a,b)=>a.start.localeCompare(b.start));saveDayToKey(dayKey,d);render(rerenderSecs);const histEl=document.getElementById('more-history');if(histEl&&histEl.style.display!=='none')renderHistory();}}
-function deleteItemFromDay(arr,id,rerenderSecs){const result=getItemFromAnyDay(arr,id);if(!result)return;const{dayKey}=result;if(dayKey===currentKey){data[arr]=data[arr].filter(x=>x.id!==id);saveDay(rerenderSecs);const histEl=document.getElementById('more-history');if(histEl&&histEl.style.display!=='none')renderHistory();}else{const d=getDayData(dayKey);if(!d||!d[arr])return;d[arr]=d[arr].filter(x=>x.id!==id);saveDayToKey(dayKey,d);render(rerenderSecs);const histEl=document.getElementById('more-history');if(histEl&&histEl.style.display!=='none')renderHistory();}}
+function deleteItemFromDay(arr,id,rerenderSecs){const result=getItemFromAnyDay(arr,id);if(!result)return;const{dayKey}=result;if(dayKey===currentKey){data[arr]=data[arr].filter(x=>x.id!==id);_invalidateDayDataCache(dayKey);saveDay(rerenderSecs);const histEl=document.getElementById('more-history');if(histEl&&histEl.style.display!=='none')renderHistory();}else{const d=getDayData(dayKey);if(!d||!d[arr])return;d[arr]=d[arr].filter(x=>x.id!==id);_invalidateDayDataCache(dayKey);saveDayToKey(dayKey,d);render(rerenderSecs);const histEl=document.getElementById('more-history');if(histEl&&histEl.style.display!=='none')renderHistory();}}
 const _sectionMap={sessions:['sessions','overview','score'],schedule:['schedule','overview'],activities:['activities','overview','score'],watchlist:['watch','overview']};
 function findItemDay(arr,id){if(data[arr]&&data[arr].find(x=>x.id===id))return currentKey;const keys=getAllDayKeys();for(const k of keys){if(k===currentKey)continue;const d=getDayData(k);if(d&&d[arr]&&d[arr].find(x=>x.id===id))return k;}return null;}
 function mutateItemDay(arr,id,mutateFn,rerenderSecs){const dayKey=findItemDay(arr,id);if(!dayKey)return;if(dayKey===currentKey){mutateFn(data[arr]);saveDay(rerenderSecs);}else{const d=getDayData(dayKey);if(!d||!d[arr])return;mutateFn(d[arr]);saveDayToKey(dayKey,d);render(rerenderSecs);const histEl=document.getElementById('more-history');if(histEl&&histEl.style.display!=='none')renderHistory();}}
