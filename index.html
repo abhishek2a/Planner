@@ -8,6 +8,9 @@
 <meta name="theme-color" content="#040403">
 <link rel="manifest" id="pwa-manifest">
 <title>Planner</title>
+<!-- CRITICAL: paint background before ANY other resource loads -->
+<style>html,body{background:#080706;margin:0;padding:0;}
+@media(prefers-color-scheme:light){html,body{background:#f2ede2;}}</style>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 
 <!-- ── SPLASH: inline so it renders before any external CSS ── -->
@@ -30,13 +33,13 @@
   font-family:'Playfair Display',Georgia,serif;
   font-size:2.8rem;font-weight:700;letter-spacing:-.04em;
   color:#f09a0e;
-  text-shadow:0 0 40px rgba(240,154,14,.35);
   animation:spl-breathe 2.2s ease-in-out infinite;
   margin-bottom:10px;
+  will-change:filter;
 }
 @keyframes spl-breathe{
-  0%,100%{text-shadow:0 0 30px rgba(240,154,14,.3);}
-  50%{text-shadow:0 0 55px rgba(240,154,14,.6);}
+  0%,100%{filter:drop-shadow(0 0 14px rgba(240,154,14,.35));}
+  50%{filter:drop-shadow(0 0 28px rgba(240,154,14,.65));}
 }
 .spl-tagline{
   font-family:-apple-system,'DM Sans',sans-serif;
@@ -1449,24 +1452,24 @@ function hideSplash(){
   if(_splashDone)return;
   _splashDone=true;
   clearInterval(_splashTimer);
+  window._markStartup&&window._markStartup('splashHide');
   const el=document.getElementById('pl-splash');
   if(!el)return;
   const dur=Date.now()-_splashStart;
-  /* Log startup perf to telemetry */
   window._crFirebaseError&&dur>8000&&window._crFirebaseError('Slow startup: '+dur+'ms',{type:'perf'});
   el.classList.add('hide');
-  setTimeout(()=>{el.remove();},500);/* remove after fade */
+  setTimeout(()=>{el.remove();window._firstPaintDone=true;},500);
 }
 /* Failsafe: only on fresh start */
 if(_isFreshStart)setTimeout(()=>{hideSplash();['main-app','auth-screen'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.add('pl-ready');});},12000);
-const APP_VERSION = '2.9.6.1';
+const APP_VERSION = '2.9.7';
 const CHANGELOG = [
-  'Fixed history activity done toggle',
-  'Filter no longer freezes media overview',
-  'Sleep time picker now works correctly',
-  'Streak syncs across devices reliably',
-  'Perf: getDayData parse-cache added',
-  'Perf: renderOverview mini-items cached'
+  'Crash reporter: retry limit (max 5) added',
+  'XSS fix: single-quote escaping in esc()',
+  'Timer leak fixed on logout',
+  'Splash animation GPU-accelerated',
+  'Settings storage calc async (no jank)',
+  'Lifecycle-aware freeze telemetry'
 ];
 
 /* ── Service Worker Registration & Update Detection ── */
@@ -1634,7 +1637,7 @@ function setAuthBusy(busy){document.getElementById('btn-login').disabled=busy;do
 function fmtFirebaseErr(code){const map={'auth/user-not-found':'No account found with that email.','auth/wrong-password':'Incorrect password.','auth/invalid-email':'Invalid email address.','auth/email-already-in-use':'An account with that email already exists.','auth/weak-password':'Password must be at least 6 characters.','auth/too-many-requests':'Too many attempts. Please try again later.','auth/network-request-failed':'Network error. Check your connection.','auth/invalid-credential':'Incorrect email or password.'};return map[code]||'Something went wrong. Please try again.';}
 function doLogin(){clearAuthErr();const email=document.getElementById('li-email').value.trim(),pass=document.getElementById('li-pass').value;if(!email||!pass){showAuthErr('Please fill in all fields.');return;}setAuthBusy(true);window._fbLogin(email,pass).then(()=>setAuthBusy(false)).catch(err=>{setAuthBusy(false);showAuthErr(fmtFirebaseErr(err.code));});}
 function doSignup(){clearAuthErr();const name=document.getElementById('su-name').value.trim(),email=document.getElementById('su-email').value.trim(),pass=document.getElementById('su-pass').value;if(!email||!pass){showAuthErr('Email and password are required.');return;}if(pass.length<6){showAuthErr('Password must be at least 6 characters.');return;}setAuthBusy(true);window._fbSignup(email,pass,name).then(()=>setAuthBusy(false)).catch(err=>{setAuthBusy(false);showAuthErr(fmtFirebaseErr(err.code));});}
-function doLogout(){if(!confirm('Sign out of Planner?'))return;window._fbLogout().then(()=>{_currentUser=null;STORE='dp6_day_';META_K='dp6_meta';data=emptyDay();meta={streak:0,habits:[],plans:[],courses:['CSEB'],autoCarryActivities:false,autoCarryHabits:false};_selectedPlanId=null;showAuthScreen();});}
+function doLogout(){if(!confirm('Sign out of Planner?'))return;window._fbLogout().then(()=>{_currentUser=null;_stopSchedTick();STORE='dp6_day_';META_K='dp6_meta';data=emptyDay();meta={streak:0,habits:[],plans:[],courses:['CSEB'],autoCarryActivities:false,autoCarryHabits:false};_selectedPlanId=null;showAuthScreen();});}
 document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const ls=document.getElementById('auth-screen');if(ls&&!ls.classList.contains('hidden')){const tab=document.getElementById('tab-login').classList.contains('active');if(tab)doLogin();else doSignup();}});
 
 function openChangeUsername(){
@@ -1795,7 +1798,7 @@ function getTime(tpId){const tp=document.getElementById(tpId);if(!tp)return '';c
 function resetTP(tpId){const tp=document.getElementById(tpId);if(!tp)return;tp.querySelector('.tp-h').value='';tp.querySelector('.tp-m').value='';tp.querySelector('.tp-ap').value='AM';}
 function fmt(t){if(!t)return '—';const[h,m]=t.split(':');const hr=parseInt(h);return (hr%12||12)+':'+m+(hr>=12?' PM':' AM');}
 function uid(){return Date.now()+Math.random().toString(36).slice(2,6);}
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');}
 
 function renderCourseSelect(selectId,currentVal){const sel=document.getElementById(selectId);if(!sel)return;const prev=sel.value||currentVal||'';sel.innerHTML='<option value="">— Select Course —</option>'+meta.courses.map(c=>`<option value="${esc(c)}" ${c===prev?'selected':''}>${esc(c)}</option>`).join('');if(prev)sel.value=prev;}
 function renderCoursesList(){const el=document.getElementById('courses-list');if(!el)return;if(!meta.courses.length){el.innerHTML=emptyHTML('📚','No courses yet');return;}el.innerHTML=meta.courses.map(c=>`<div class="mini-list-item"><div class="mli-left">📗 ${esc(c)}</div><div class="mli-right">${c!=='CSEB'?`<button class="btn-del" style="font-size:11px;min-height:28px;padding:0 10px;" onclick="deleteCourse('${esc(c)}')">✕</button>`:'<span style="font-size:11px;color:var(--text3);">default</span>'}</div></div>`).join('');}
@@ -2201,7 +2204,19 @@ function renderHistory(reset){if(reset)_histShown=HIST_PAGE;const keys=getAllDay
 function loadMoreHistory(){_histShown+=HIST_PAGE;renderHistory();}
 
 function clearToday(){if(!confirm("Clear all of today's data? Cannot be undone."))return;localStorage.removeItem(STORE+currentKey);invalidateDayKeysCache();_invalidateDayDataCache(currentKey);_invalidatePlanCache();_invalidateWatchCache();if(_currentUser){window._fbSaveDay(_currentUser.uid,currentKey,emptyDay()).catch(()=>{});}data=emptyDay();_selectedPlanId=null;renderAll();renderSleepList();renderWorkoutList();renderSettings();renderPlanQuickPick();if(_subActive('more-weekly')){try{renderSleepWorkoutAnalytics();}catch(e){}}}
-function renderSettings(){const keys=getAllDayKeys();let totalBytes=0;for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&(k.startsWith(STORE)||k===META_K))totalBytes+=(localStorage.getItem(k)||'').length*2;}if(_currentUser){const nameEl=document.getElementById('acct-name');const emailEl=document.getElementById('acct-email');if(nameEl)nameEl.textContent=_currentUser.displayName||'(no display name)';if(emailEl)emailEl.textContent=_currentUser.email;_applyStreak(meta.streak);}const verLbl=document.getElementById('settings-ver-lbl');if(verLbl)verLbl.textContent='Version '+APP_VERSION+' · Build 20260511';document.getElementById('storage-info').innerHTML=`<div class="mini-list-item"><div class="mli-left">Days tracked</div><div class="mli-right">${keys.length}</div></div><div class="mini-list-item"><div class="mli-left">Local storage used</div><div class="mli-right">${(totalBytes/1024).toFixed(1)} KB</div></div><div class="mini-list-item"><div class="mli-left">Plans created</div><div class="mli-right">${meta.plans.length}</div></div><div class="mini-list-item"><div class="mli-left">Courses saved</div><div class="mli-right">${meta.courses.length}</div></div><div class="mini-list-item"><div class="mli-left">Current streak</div><div class="mli-right">${meta.streak} days</div></div><div class="mini-list-item"><div class="mli-left">App version</div><div class="mli-right"><span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--amber);">v${APP_VERSION}</span></div></div>`;}
+function renderSettings(){
+  const keys=getAllDayKeys();
+  if(_currentUser){const nameEl=document.getElementById('acct-name');const emailEl=document.getElementById('acct-email');if(nameEl)nameEl.textContent=_currentUser.displayName||'(no display name)';if(emailEl)emailEl.textContent=_currentUser.email;_applyStreak(meta.streak);}
+  const verLbl=document.getElementById('settings-ver-lbl');if(verLbl)verLbl.textContent='Version '+APP_VERSION+' · Build 20260511';
+  document.getElementById('storage-info').innerHTML=`<div class="mini-list-item"><div class="mli-left">Days tracked</div><div class="mli-right">${keys.length}</div></div><div class="mini-list-item"><div class="mli-left">Local storage used</div><div class="mli-right"><span id="storage-calc-result">…</span></div></div><div class="mini-list-item"><div class="mli-left">Plans created</div><div class="mli-right">${meta.plans.length}</div></div><div class="mini-list-item"><div class="mli-left">Courses saved</div><div class="mli-right">${meta.courses.length}</div></div><div class="mini-list-item"><div class="mli-left">Current streak</div><div class="mli-right">${meta.streak} days</div></div><div class="mini-list-item"><div class="mli-left">App version</div><div class="mli-right"><span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--amber);">v${APP_VERSION}</span></div></div>`;
+  /* Async storage calc — don't block tab switch */
+  setTimeout(()=>{
+    let totalBytes=0;
+    for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&(k.startsWith(STORE)||k===META_K))totalBytes+=(localStorage.getItem(k)||'').length*2;}
+    const el=document.getElementById('storage-calc-result');
+    if(el)el.textContent=(totalBytes/1024).toFixed(1)+' KB';
+  },0);
+}
 
 function initDate(){const now=new Date();document.getElementById('date-pill').textContent=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][now.getDay()]+' '+MTHS[now.getMonth()]+' '+now.getDate();const name=_currentUser?(_currentUser.displayName||_currentUser.email.split('@')[0]):'';document.getElementById('header-sub').textContent=getGreeting(now,name);}
 function getGreeting(now,name){const h=now.getHours();const g=h>=4&&h<12?'Good morning':h>=12&&h<16?'Good afternoon':h>=16&&h<22?'Good evening':'Good night';return g+(name?', '+name:'')+'!';}
@@ -2226,6 +2241,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 async function initApp(user){
   _currentUser=user;
   _splashMsg('Syncing planner…');
+  window._markStartup&&window._markStartup('authRestored');
   document.getElementById('auth-loading').classList.remove('hidden');document.getElementById('main-app').style.display='none';setLoadingMsg('Setting up…');STORE='dp6_'+user.uid+'_day_';META_K='dp6_'+user.uid+'_meta';_dayKeysCache=null;currentKey=todayKey();_selectedPlanId=null;await migrateLegacyData(user.uid);await syncFromFirestore(user.uid);invalidateDayKeysCache();_invalidateDayDataCache();_invalidatePlanCache();_invalidateWatchCache();loadMeta();loadDay(currentKey);(function(){const lbl=(data.goal.label||'').trim().toLowerCase();if(lbl){const m=meta.plans.find(p=>p.name.toLowerCase()===lbl&&daysUntil(p.date)>=0);if(m){_selectedPlanId=m.id;return;}}const linked=data.sessions.filter(s=>s.planId).sort((a,b)=>(b.time||'').localeCompare(a.time||''));if(linked.length){const pid=linked[0].planId;if(meta.plans.find(p=>p.id===pid&&daysUntil(p.date)>=0))_selectedPlanId=pid;}})();_splashMsg('Preparing dashboard…');applyTheme();initTimePickers();initDate();_streakLastCalc="";updateStreak(true);renderAll();renderPlanQuickPick();renderCourseSelect('plan-course','');renderCarryToggles();hideAuthScreen();}
 
 function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user);}else{showAuthScreen();}});}
@@ -2295,7 +2311,12 @@ function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user
     if(_sending||!_queue.length||!navigator.onLine||!window._fbCrashReport)return;
     _sending=true;
     const batch=_queue.splice(0,5);
-    Promise.all(batch.map(r=>window._fbCrashReport(r).catch(()=>{}))).finally(()=>{_sending=false;});
+    Promise.all(batch.map(r=>
+      window._fbCrashReport(r).catch(()=>{
+        r._retry=(r._retry||0)+1;
+        if(r._retry<5)_queue.push(r);/* max 5 retries — prevent infinite growth */
+      })
+    )).finally(()=>{_sending=false;});
   }
 
   /* ── Build & submit report ── */
@@ -2338,17 +2359,66 @@ function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user
     window._earlyErrors=[];
   }
 
-  /* ── Heartbeat: detect freeze/kill ── */
+  /* ── Lifecycle tracking ── */
+  let _wasHidden=false,_lastVisible=Date.now(),_lastFocus=Date.now();
+  let _focused=true,_startupPhase='init',_firstPaintDone=false;
+  const _lcLog=[];/* small ring buffer for diagnostics */
+  const _addLC=(ev)=>{if(_lcLog.length>30)_lcLog.shift();_lcLog.push({t:Date.now(),ev});};
+
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='hidden'){_wasHidden=true;_addLC('hidden');}
+    else{_addLC('visible');_lastVisible=Date.now();}
+  });
+  window.addEventListener('focus',()=>{_focused=true;_addLC('focus');_lastFocus=Date.now();});
+  window.addEventListener('blur',()=>{_focused=false;_addLC('blur');});
+  window.addEventListener('pagehide',()=>{_addLC('pagehide');});
+  window.addEventListener('pageshow',(e)=>{_addLC(e.persisted?'pageshow-bfcache':'pageshow');});
+
+  /* ── Lifecycle-aware heartbeat ── */
   function _startHeartbeat(){
     _lastHeartbeat=Date.now();
     _hbInterval=setInterval(()=>{
       const now=Date.now(),gap=now-_lastHeartbeat;
-      if(gap>30000){/* >30 s gap = suspected freeze/background kill */
-        _report('freeze','Suspected freeze or background kill',{stack:'gap='+gap+'ms',line:null});
-      }
       _lastHeartbeat=now;
-    },10000);/* check every 10 s */
+      if(gap<12000)return;/* normal check interval jitter — ignore */
+      /* Classify gap */
+      let type,label;
+      if(_wasHidden||document.visibilityState==='hidden'||!_focused){
+        /* App was backgrounded — not a real freeze */
+        type=gap<45000?'minor_pause':gap<120000?'background_suspend':gap<300000?'possible_suspend':'probable_background_kill';
+        label=`Lifecycle event (${type}), gap=${Math.round(gap/1000)}s, wasHidden=${_wasHidden}`;
+        /* Only log long suspensions — skip minor pauses to reduce noise */
+        if(gap<120000){_wasHidden=false;return;}
+      } else {
+        /* Page stayed visible and focused — real freeze candidate */
+        type='possible_freeze';
+        label=`Possible UI freeze, gap=${Math.round(gap/1000)}s`;
+      }
+      _wasHidden=false;
+      _report(type,label,{
+        stack:null,
+        visibilityState:document.visibilityState,
+        wasHidden:_wasHidden,
+        focused:_focused,
+        startupPhase:_startupPhase,
+        firstPaintDone:_firstPaintDone,
+        splashVisible:!!document.getElementById('pl-splash')
+      });
+    },10000);
   }
+
+  /* ── Startup perf ── */
+  const _t0=performance.now();
+  const _startupTiming={};
+  function _markStartup(key){_startupTiming[key]=Math.round(performance.now()-_t0);}
+
+  /* ── Developer diagnostics ── */
+  window.debugLifecycle=()=>{console.table(_lcLog);return _lcLog;};
+  window.debugStartup=()=>{console.table(_startupTiming);return _startupTiming;};
+  window.debugHeartbeat=()=>({lastBeat:_lastHeartbeat,wasHidden:_wasHidden,focused:_focused,phase:_startupPhase});
+
+  window._markStartup=_markStartup;
+  window._firstPaintDone=false;
 
   /* ── SW error capture ── */
   window._crSWError=function(msg,extra){_report('sw',msg,extra);};
