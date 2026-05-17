@@ -10,6 +10,67 @@
 <title>Planner</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 
+<!-- ── SPLASH: inline so it renders before any external CSS ── -->
+<style>
+/* Hide original auth-loading — pl-splash replaces it */
+.auth-loading{display:none!important;}
+#pl-splash{
+  position:fixed;inset:0;z-index:9999;
+  background:#080706;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:0;
+  padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px)
+          env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);
+  transition:opacity .45s cubic-bezier(.4,0,.2,1),transform .45s cubic-bezier(.4,0,.2,1);
+  will-change:opacity,transform;
+}
+#pl-splash.hide{opacity:0;transform:scale(1.03);pointer-events:none;}
+.spl-logo{
+  font-family:'Playfair Display',Georgia,serif;
+  font-size:2.8rem;font-weight:700;letter-spacing:-.04em;
+  color:#f09a0e;
+  text-shadow:0 0 40px rgba(240,154,14,.35);
+  animation:spl-breathe 2.2s ease-in-out infinite;
+  margin-bottom:10px;
+}
+@keyframes spl-breathe{
+  0%,100%{text-shadow:0 0 30px rgba(240,154,14,.3);}
+  50%{text-shadow:0 0 55px rgba(240,154,14,.6);}
+}
+.spl-tagline{
+  font-family:-apple-system,'DM Sans',sans-serif;
+  font-size:.72rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;
+  color:#625840;margin-bottom:52px;
+}
+.spl-ring{
+  width:38px;height:38px;
+  border:2.5px solid #282210;
+  border-top-color:#f09a0e;
+  border-radius:50%;
+  animation:spl-spin .75s linear infinite;
+  margin-bottom:22px;
+}
+@keyframes spl-spin{to{transform:rotate(360deg);}}
+.spl-txt{
+  font-family:-apple-system,'DM Sans',sans-serif;
+  font-size:.7rem;font-weight:600;letter-spacing:.08em;
+  color:#625840;height:16px;
+  transition:opacity .3s;
+}
+/* Light mode override */
+@media(prefers-color-scheme:light){
+  #pl-splash{background:#f2ede2;}
+  .spl-logo{color:#c07800;}
+  .spl-tagline{color:#9a8f78;}
+  .spl-ring{border-color:#ddd6c8;border-top-color:#c07800;}
+  .spl-txt{color:#9a8f78;}
+}
+/* Hide main app until splash gone */
+#main-app,#auth-screen{opacity:0;}
+#main-app.pl-ready,#auth-screen.pl-ready{opacity:1;transition:opacity .3s ease;}
+</style>
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
   import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app-check.js";
@@ -851,7 +912,15 @@ select option{background:var(--surf2);}
 </head>
 <body>
 
-<!-- ── LOADING SPLASH ── -->
+<!-- ── SPLASH SCREEN — renders instantly ── -->
+<div id="pl-splash" aria-hidden="true">
+  <div class="spl-logo">Planner</div>
+  <div class="spl-tagline">Your personal planner</div>
+  <div class="spl-ring"></div>
+  <div class="spl-txt" id="spl-txt">Initializing…</div>
+</div>
+
+<!-- ── LOADING SPLASH (original auth loader) ── -->
 <div class="auth-loading" id="auth-loading">
   <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;letter-spacing:-.04em;"><span style="color:var(--amber)">Planner</span></div>
   <div class="auth-spinner"></div>
@@ -1364,7 +1433,32 @@ window.onunhandledrejection=function(ev){const r=ev&&ev.reason;window._earlyErro
   document.getElementById('pwa-manifest').href=URL.createObjectURL(blob);
 })();
 
-/* ── App Version ── */
+/* ── SPLASH ORCHESTRATION ── */
+/* Only show on fresh page load — not on tab resume/background restore */
+const _isFreshStart=!sessionStorage.getItem('pl-loaded');
+if(_isFreshStart){sessionStorage.setItem('pl-loaded','1');}
+else{/* Resume: remove splash instantly */const _s=document.getElementById('pl-splash');if(_s)_s.remove();}
+const _splashStart=Date.now();
+const _splashMsgs=['Initializing…','Loading workspace…','Syncing planner…','Preparing dashboard…'];
+let _splashIdx=0,_splashTimer=null,_splashDone=!_isFreshStart;
+function _splashMsg(t){if(!_isFreshStart)return;const el=document.getElementById('spl-txt');if(el)el.textContent=t;}
+function _splashTick(){_splashIdx=Math.min(_splashIdx+1,_splashMsgs.length-1);_splashMsg(_splashMsgs[_splashIdx]);}
+if(_isFreshStart)_splashTimer=setInterval(_splashTick,900);
+
+function hideSplash(){
+  if(_splashDone)return;
+  _splashDone=true;
+  clearInterval(_splashTimer);
+  const el=document.getElementById('pl-splash');
+  if(!el)return;
+  const dur=Date.now()-_splashStart;
+  /* Log startup perf to telemetry */
+  window._crFirebaseError&&dur>8000&&window._crFirebaseError('Slow startup: '+dur+'ms',{type:'perf'});
+  el.classList.add('hide');
+  setTimeout(()=>{el.remove();},500);/* remove after fade */
+}
+/* Failsafe: only on fresh start */
+if(_isFreshStart)setTimeout(()=>{hideSplash();['main-app','auth-screen'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.add('pl-ready');});},12000);
 const APP_VERSION = '2.9.6.1';
 const CHANGELOG = [
   'Fixed history activity done toggle',
@@ -1515,9 +1609,24 @@ function showSyncState(state){
 }
 
 let _currentUser=null;
-function showAuthScreen(){document.getElementById('auth-loading').classList.add('hidden');document.getElementById('main-app').style.display='none';document.getElementById('auth-screen').classList.remove('hidden');applyTheme();}
-function hideAuthScreen(){document.getElementById('auth-screen').classList.add('hidden');document.getElementById('auth-loading').classList.add('hidden');document.getElementById('main-app').style.display='flex';}
-function setLoadingMsg(msg){const el=document.getElementById('auth-loading-txt');if(el)el.textContent=msg;}
+function showAuthScreen(){
+  document.getElementById('auth-loading').classList.add('hidden');
+  document.getElementById('main-app').style.display='none';
+  const as=document.getElementById('auth-screen');
+  as.classList.remove('hidden');
+  as.classList.add('pl-ready');
+  hideSplash();
+  applyTheme();
+}
+function hideAuthScreen(){
+  document.getElementById('auth-screen').classList.add('hidden');
+  document.getElementById('auth-loading').classList.add('hidden');
+  const ma=document.getElementById('main-app');
+  ma.style.display='flex';
+  ma.classList.add('pl-ready');
+  hideSplash();
+}
+function setLoadingMsg(msg){_splashMsg&&_splashMsg(msg);}
 function switchAuthTab(tab){document.getElementById('tab-login').classList.toggle('active',tab==='login');document.getElementById('tab-signup').classList.toggle('active',tab==='signup');document.getElementById('form-login').style.display=tab==='login'?'':'none';document.getElementById('form-signup').style.display=tab==='signup'?'':'none';clearAuthErr();}
 function showAuthErr(msg){const el=document.getElementById('auth-err');el.textContent=msg;el.classList.add('show');}
 function clearAuthErr(){const el=document.getElementById('auth-err');el.textContent='';el.classList.remove('show');}
@@ -1808,9 +1917,8 @@ function renderSleepList(){
   const totalH=sleepActs.reduce((s,a)=>s+(a.duration||0),0);
   el.innerHTML=sleepActs.map(a=>{
     const qIcon={good:'😊',okay:'😐',poor:'😴'}[a.quality||'good']||'😴';
-    return `<div class="list-item"><div class="item-bar bar-indigo"></div><div class="item-time">${safeTimeFmt(a.sleepTime)}</div><div class="item-info"><div class="item-title">${qIcon} ${a.duration||'?'}h sleep</div><div class="item-sub">Wake: ${safeTimeFmt(a.wakeTime)}${a.notes?' · '+esc(a.notes):''}</div></div><button class="btn-del" onclick="removeItem('activities','${a.id}');renderSleepList()">✕</button></div>`;
+    return `<div class="list-item"><div class="item-bar bar-indigo"></div><div class="item-time">${safeTimeFmt(a.sleepTime)}</div><div class="item-info"><div class="item-title">${qIcon} ${a.duration||'?'}h sleep</div><div class="item-sub">Wake: ${safeTimeFmt(a.wakeTime)}${a.notes?' · '+esc(a.notes):''}</div></div><button class="btn-edit" onclick="editSleepEntry('${a.id}')">✏️</button><button class="btn-del" style="margin-left:4px;" onclick="removeItem('activities','${a.id}');renderSleepList()">✕</button></div>`;
   }).join('');
-  /* 7-day stats */
   const ws=_getWeekActStats();
   if(statsEl&&ws.sD>0){
     statsEl.style.display='grid';
@@ -1825,7 +1933,7 @@ function renderWorkoutList(){
   if(!el)return;
   if(!workActs.length){el.innerHTML=emptyHTML('💪','No workouts logged today');statsEl&&(statsEl.style.display='none');return;}
   const intIcon={light:'🟢',moderate:'🟡',intense:'🔴'};
-  el.innerHTML=workActs.map(a=>`<div class="list-item"><div class="item-bar bar-teal"></div>${a.time?`<div class="item-time">${fmt(a.time)}</div>`:''}<div class="item-info"><div class="item-title">${a.workoutLabel||'💪 Workout'} ${intIcon[a.intensity||'moderate']||''}</div><div class="item-sub">${a.duration}h${a.notes?' · '+esc(a.notes):''}</div></div><button class="btn-del" onclick="removeItem('activities','${a.id}');renderWorkoutList()">✕</button></div>`).join('');
+  el.innerHTML=workActs.map(a=>`<div class="list-item"><div class="item-bar bar-teal"></div>${a.time?`<div class="item-time">${fmt(a.time)}</div>`:''}<div class="item-info"><div class="item-title">${a.workoutLabel||'💪 Workout'} ${intIcon[a.intensity||'moderate']||''}</div><div class="item-sub">${a.duration}h${a.notes?' · '+esc(a.notes):''}</div></div><button class="btn-edit" onclick="editWorkoutEntry('${a.id}')">✏️</button><button class="btn-del" style="margin-left:4px;" onclick="removeItem('activities','${a.id}');renderWorkoutList()">✕</button></div>`).join('');
   const ws=_getWeekActStats();
   if(statsEl&&ws.wD>0){
     statsEl.style.display='grid';
@@ -1833,6 +1941,44 @@ function renderWorkoutList(){
     const todayH=workActs.reduce((s,a)=>s+(a.duration||0),0);
     statsEl.innerHTML=`<div class="stat-card sc-teal"><div class="stat-val" style="font-size:1.3rem;">${todayH.toFixed(1)}h</div><div class="stat-lbl">Today</div></div><div class="stat-card sc-teal"><div class="stat-val" style="font-size:1.3rem;">${ws.wH.toFixed(1)}h</div><div class="stat-lbl">This Week</div></div><div class="stat-card sc-teal"><div class="stat-val" style="font-size:1.3rem;">${avg}h</div><div class="stat-lbl">Per Session</div></div><div class="stat-card sc-teal"><div class="stat-val" style="font-size:1.3rem;">${ws.wD}d</div><div class="stat-lbl">Days Active</div></div>`;
   }
+}
+function editSleepEntry(id){
+  const result=getItemFromAnyDay('activities',id);if(!result)return;
+  const a=result.item;_eid=id;_etype='sleep';
+  document.getElementById('edit-sheet-title').textContent='Edit Sleep';
+  document.getElementById('edit-sheet-body').innerHTML=`
+    <div class="form-group"><label class="field-label">Duration (hours)</label><input type="number" id="ei-sleepdur" value="${a.duration||''}" min="0.5" max="24" step="0.25" style="color:var(--amber);font-weight:700;"></div>
+    <div class="form-group"><label class="field-label">Quality</label><select id="ei-sleepq"><option value="good" ${(a.quality||'good')==='good'?'selected':''}>😊 Good</option><option value="okay" ${a.quality==='okay'?'selected':''}>😐 Okay</option><option value="poor" ${a.quality==='poor'?'selected':''}>😴 Poor</option></select></div>
+    <div class="form-group"><label class="field-label">Notes</label><input type="text" id="ei-sleepnotes" value="${esc(a.notes||'')}"></div>`;
+  document.getElementById('edit-actions').innerHTML=`<button class="btn btn-primary" onclick="saveSleepEdit()">Save</button><button class="btn btn-ghost" onclick="closeEdit()">Cancel</button>`;
+  openEdit();
+}
+function saveSleepEdit(){
+  const result=getItemFromAnyDay('activities',_eid);if(!result){closeEdit();return;}
+  const dur=parseFloat(document.getElementById('ei-sleepdur').value)||result.item.duration;
+  const updated={...result.item,duration:dur,name:'Sleep '+dur+'h',quality:g('ei-sleepq'),notes:g('ei-sleepnotes')};
+  closeEdit();saveItemToDay('activities',_eid,updated,['activities','overview']);renderSleepList();
+}
+function editWorkoutEntry(id){
+  const result=getItemFromAnyDay('activities',id);if(!result)return;
+  const a=result.item;_eid=id;_etype='workout';
+  const typeOpts=['gym','run','walk','yoga','sport','swim','cycle','home','other'].map(t=>`<option value="${t}" ${(a.workoutType||'gym')===t?'selected':''}>${{gym:'🏋️ Gym',run:'🏃 Run',walk:'🚶 Walk',yoga:'🧘 Yoga',sport:'⚽ Sport',swim:'🏊 Swim',cycle:'🚴 Cycle',home:'🏠 Home',other:'Other'}[t]}</option>`).join('');
+  document.getElementById('edit-sheet-title').textContent='Edit Workout';
+  document.getElementById('edit-sheet-body').innerHTML=`
+    <div class="form-group"><label class="field-label">Duration (hours)</label><input type="number" id="ei-wdur" value="${a.duration||''}" min="0.25" max="12" step="0.25"></div>
+    <div class="form-group"><label class="field-label">Type</label><select id="ei-wtype">${typeOpts}</select></div>
+    <div class="form-group"><label class="field-label">Intensity</label><select id="ei-wint"><option value="light" ${a.intensity==='light'?'selected':''}>🟢 Light</option><option value="moderate" ${(!a.intensity||a.intensity==='moderate')?'selected':''}>🟡 Moderate</option><option value="intense" ${a.intensity==='intense'?'selected':''}>🔴 Intense</option></select></div>
+    <div class="form-group"><label class="field-label">Notes</label><input type="text" id="ei-wnotes" value="${esc(a.notes||'')}"></div>`;
+  document.getElementById('edit-actions').innerHTML=`<button class="btn btn-primary" onclick="saveWorkoutEdit()">Save</button><button class="btn btn-ghost" onclick="closeEdit()">Cancel</button>`;
+  openEdit();
+}
+function saveWorkoutEdit(){
+  const result=getItemFromAnyDay('activities',_eid);if(!result){closeEdit();return;}
+  const dur=parseFloat(document.getElementById('ei-wdur').value)||result.item.duration;
+  const wtype=g('ei-wtype');
+  const label={gym:'🏋️ Gym',run:'🏃 Run',walk:'🚶 Walk',yoga:'🧘 Yoga',sport:'⚽ Sport',swim:'🏊 Swim',cycle:'🚴 Cycle',home:'🏠 Home',other:'Other'}[wtype]||wtype;
+  const updated={...result.item,duration:dur,workoutType:wtype,workoutLabel:label,name:label+' Workout',intensity:g('ei-wint'),notes:g('ei-wnotes')};
+  closeEdit();saveItemToDay('activities',_eid,updated,['activities','overview']);renderWorkoutList();
 }
 function addActivity(){const name=document.getElementById('act-name').value.trim(),dateVal=document.getElementById('act-date').value||'';if(!name){alert('⚠️ Enter an activity name.');return;}const entry={id:uid(),name,category:'general',time:getTime('tp-act'),priority:document.getElementById('act-priority').value,notes:document.getElementById('act-notes').value.trim(),done:false};const targetKey=dateVal||currentKey,isFuture=dateVal&&dateVal!==currentKey;if(isFuture){const d=getOrCreateDayData(targetKey);d.activities=d.activities||[];d.activities.push(entry);saveDayToKey(targetKey,d);alert('✓ Saved for '+fmtKey(targetKey));}else{data.activities.push(entry);saveDay(['activities','overview','score']);}document.getElementById('act-name').value='';document.getElementById('act-notes').value='';document.getElementById('act-date').value='';resetTP('tp-act');}
 function addWatch(){const title=document.getElementById('watch-title').value.trim(),dateVal=document.getElementById('watch-date').value||'';if(!title){alert('⚠️ Enter a title.');return;}const entry={id:uid(),title,platform:document.getElementById('watch-platform').value,status:document.getElementById('watch-status').value,notes:document.getElementById('watch-notes').value.trim()};const targetKey=dateVal||currentKey,isFuture=dateVal&&dateVal!==currentKey;if(isFuture){const d=getOrCreateDayData(targetKey);d.watchlist=d.watchlist||[];d.watchlist.push(entry);saveDayToKey(targetKey,d);alert('✓ Saved for '+fmtKey(targetKey));}else{data.watchlist.push(entry);saveDay(['watch','overview']);}_invalidateWatchCache();/* refresh analytics if open */const wa=document.getElementById('watch-analytics-dash');if(wa&&wa.closest('#more-weekly')&&document.getElementById('more-weekly').style.display!=='none')renderWatchAnalytics();document.getElementById('watch-title').value='';document.getElementById('watch-notes').value='';document.getElementById('watch-date').value='';}
@@ -2077,7 +2223,10 @@ function saveEdit(){if(!_eid||!_etype){closeEdit();return;}if(_etype==='session'
 _startSchedTick();
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){_startSchedTick();render(null);const newKey=todayKey();if(newKey!==currentKey&&_currentUser){try{localStorage.setItem(STORE+currentKey,JSON.stringify(data));}catch(e){}currentKey=newKey;_selectedPlanId=null;_invalidatePlanCache();_invalidateWatchCache();loadDay(currentKey);initDate();renderAll();renderPlanQuickPick();}}else{_stopSchedTick();}});
 
-async function initApp(user){_currentUser=user;document.getElementById('auth-loading').classList.remove('hidden');document.getElementById('main-app').style.display='none';setLoadingMsg('Setting up…');STORE='dp6_'+user.uid+'_day_';META_K='dp6_'+user.uid+'_meta';_dayKeysCache=null;currentKey=todayKey();_selectedPlanId=null;await migrateLegacyData(user.uid);await syncFromFirestore(user.uid);invalidateDayKeysCache();_invalidateDayDataCache();_invalidatePlanCache();_invalidateWatchCache();loadMeta();loadDay(currentKey);(function(){const lbl=(data.goal.label||'').trim().toLowerCase();if(lbl){const m=meta.plans.find(p=>p.name.toLowerCase()===lbl&&daysUntil(p.date)>=0);if(m){_selectedPlanId=m.id;return;}}const linked=data.sessions.filter(s=>s.planId).sort((a,b)=>(b.time||'').localeCompare(a.time||''));if(linked.length){const pid=linked[0].planId;if(meta.plans.find(p=>p.id===pid&&daysUntil(p.date)>=0))_selectedPlanId=pid;}})();applyTheme();initTimePickers();initDate();_streakLastCalc="";updateStreak(true);renderAll();renderPlanQuickPick();renderCourseSelect('plan-course','');renderCarryToggles();hideAuthScreen();}
+async function initApp(user){
+  _currentUser=user;
+  _splashMsg('Syncing planner…');
+  document.getElementById('auth-loading').classList.remove('hidden');document.getElementById('main-app').style.display='none';setLoadingMsg('Setting up…');STORE='dp6_'+user.uid+'_day_';META_K='dp6_'+user.uid+'_meta';_dayKeysCache=null;currentKey=todayKey();_selectedPlanId=null;await migrateLegacyData(user.uid);await syncFromFirestore(user.uid);invalidateDayKeysCache();_invalidateDayDataCache();_invalidatePlanCache();_invalidateWatchCache();loadMeta();loadDay(currentKey);(function(){const lbl=(data.goal.label||'').trim().toLowerCase();if(lbl){const m=meta.plans.find(p=>p.name.toLowerCase()===lbl&&daysUntil(p.date)>=0);if(m){_selectedPlanId=m.id;return;}}const linked=data.sessions.filter(s=>s.planId).sort((a,b)=>(b.time||'').localeCompare(a.time||''));if(linked.length){const pid=linked[0].planId;if(meta.plans.find(p=>p.id===pid&&daysUntil(p.date)>=0))_selectedPlanId=pid;}})();_splashMsg('Preparing dashboard…');applyTheme();initTimePickers();initDate();_streakLastCalc="";updateStreak(true);renderAll();renderPlanQuickPick();renderCourseSelect('plan-course','');renderCarryToggles();hideAuthScreen();}
 
 function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user);}else{showAuthScreen();}});}
 /* ─────────────────────────────────────────────
