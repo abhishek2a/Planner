@@ -2029,7 +2029,7 @@ function saveItemToDay(arr,id,updatedItem,rerenderSecs){const result=getItemFrom
 function deleteItemFromDay(arr,id,rerenderSecs){const result=getItemFromAnyDay(arr,id);if(!result)return;const{dayKey}=result;if(dayKey===currentKey){data[arr]=data[arr].filter(x=>x.id!==id);_invalidateDayDataCache(dayKey);saveDay(rerenderSecs);const histEl=document.getElementById('more-history');if(histEl&&histEl.style.display!=='none')renderHistory();}else{const d=getDayData(dayKey);if(!d||!d[arr])return;d[arr]=d[arr].filter(x=>x.id!==id);_invalidateDayDataCache(dayKey);saveDayToKey(dayKey,d);render(rerenderSecs);const histEl=document.getElementById('more-history');if(histEl&&histEl.style.display!=='none')renderHistory();}}
 const _sectionMap={sessions:['sessions','overview','score'],schedule:['schedule','overview'],activities:['activities','overview','score'],watchlist:['watch','overview']};
 function findItemDay(arr,id){if(data[arr]&&data[arr].find(x=>x.id===id))return currentKey;const keys=getAllDayKeys();for(const k of keys){if(k===currentKey)continue;const d=getDayData(k);if(d&&d[arr]&&d[arr].find(x=>x.id===id))return k;}return null;}
-function mutateItemDay(arr,id,mutateFn,rerenderSecs){const dayKey=findItemDay(arr,id);if(!dayKey)return;if(dayKey===currentKey){mutateFn(data[arr]);saveDay(rerenderSecs);}else{const d=getDayData(dayKey);if(!d||!d[arr])return;mutateFn(d[arr]);saveDayToKey(dayKey,d);render(rerenderSecs);const histEl=document.getElementById('more-history');if(histEl&&histEl.style.display!=='none')renderHistory();}}
+function mutateItemDay(arr,id,mutateFn,rerenderSecs){const dayKey=findItemDay(arr,id);if(!dayKey)return;if(dayKey===currentKey){mutateFn(data[arr]);saveDay(rerenderSecs);}else{const d=getDayData(dayKey);if(!d||!d[arr])return;mutateFn(d[arr]);_invalidateDayDataCache(dayKey);saveDayToKey(dayKey,d);render(rerenderSecs);const histEl=document.getElementById('more-history');if(histEl&&histEl.style.display!=='none')renderHistory();}}
 function removeItem(arr,id){
   /* Find which day before deleting from memory */
   const dayKey=findItemDay(arr,id);
@@ -2047,10 +2047,15 @@ function removeItem(arr,id){
 }
 function toggleDone(id){mutateItemDay('activities',id,a=>{const x=a.find(i=>i.id===id);if(x)x.done=!x.done;},['activities','overview','score']);}
 function changeWatchStatus(id,val){
+  const dayKey=findItemDay('watchlist',id);
   mutateItemDay('watchlist',id,a=>{const x=a.find(i=>i.id===id);if(x)x.status=val;},['watch']);
   _invalidateWatchCache();
-  const waDiv=document.getElementById('watch-analytics-dash');
-  if(waDiv&&_subActive('more-weekly'))renderWatchAnalytics();
+  /* Immediate Firestore push — prevent stale merge overwriting new status */
+  if(_currentUser&&dayKey){
+    const updated=dayKey===currentKey?data:getDayData(dayKey);
+    if(updated)window._fbSaveDay(_currentUser.uid,dayKey,updated).catch(()=>{});
+  }
+  if(_subActive('more-weekly'))renderWatchAnalytics();
 }
 
 function renderSessions(){const hrs=sumHours(data.sessions),pct=Math.min(100,(hrs/data.goal.hours)*100).toFixed(0);document.getElementById('study-prog-txt').textContent=hrs+'h / '+data.goal.hours+'h';document.getElementById('study-prog-bar').style.width=pct+'%';const gEl=document.getElementById('study-goal'),lEl=document.getElementById('goal-label');if(document.activeElement!==gEl)gEl.value=data.goal.hours;if(document.activeElement!==lEl)lEl.value=data.goal.label;const el=document.getElementById('session-list');if(!data.sessions.length){el.innerHTML=emptyHTML('📖','No sessions yet');return;}el.innerHTML=data.sessions.map(s=>{const plan=s.planId?meta.plans.find(p=>p.id===s.planId):null;return `<div class="list-item"><div class="item-bar bar-amber"></div><div class="item-time">${s.time?fmt(s.time):'—'}</div><div class="item-info"><div class="item-title">${esc(s.subject)}</div><div class="item-sub">${s.duration}h${plan?` · <span style="color:var(--amber)">📋 ${esc(plan.name)}</span>`:''}${s.notes?' · '+esc(s.notes):''}</div></div><button class="btn-edit" onclick="editSession('${s.id}')">✏️</button><button class="btn-del" style="margin-left:4px;" onclick="removeItem('sessions','${s.id}')">✕</button></div>`;}).join('');}
