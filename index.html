@@ -1746,22 +1746,36 @@ async function manualSync(){
     if(_subActive('more-weekly'))renderWatchAnalytics();
   }catch(e){showSyncState('error');}
 }
-function mergeArrayById(local,remote){
+function mergeArrayById(local,remote,preferLocal){
   const map=new Map();
-  (local||[]).forEach(x=>map.set(x.id,x));
-  (remote||[]).forEach(x=>{
+  (remote||[]).forEach(x=>map.set(x.id,x));/* remote base */
+  (local||[]).forEach(x=>{
     if(!map.has(x.id)){map.set(x.id,x);}
-    else{
-      /* For watchlist: prefer more-progressed status */
-      const L=map.get(x.id);
+    else if(preferLocal){
+      /* Local wins — user edits override stale remote (status changes, etc.) */
+      map.set(x.id,{...map.get(x.id),...x});
+    } else {
+      /* Generic: keep whichever has more-progressed watch status */
+      const R=map.get(x.id);
       const rank={done:2,watching:1,planned:0};
-      const lr=rank[L.status]??-1,rr=rank[x.status]??-1;
-      if(rr>lr)map.set(x.id,{...L,...x});/* remote more progressed — take remote fields */
+      const lr=rank[x.status]??-1,rr=rank[R.status]??-1;
+      if(lr>=rr)map.set(x.id,{...R,...x});
     }
   });
   return Array.from(map.values());
 }
-function mergeDay(local,remote){return{goal:remote.goal||local.goal||{hours:6,label:''},sessions:mergeArrayById(local.sessions,remote.sessions),schedule:mergeArrayById(local.schedule,remote.schedule),activities:mergeArrayById(local.activities,remote.activities),watchlist:mergeArrayById(local.watchlist,remote.watchlist),habits:mergeArrayById(local.habits,remote.habits),mood:remote.mood||local.mood||'',moodEmoji:remote.moodEmoji||local.moodEmoji||'',journal:remote.journal||local.journal||'',rating:remote.rating||local.rating||0};}
+function mergeDay(local,remote){return{
+  goal:local.goal||remote.goal||{hours:6,label:''},
+  sessions:mergeArrayById(local.sessions,remote.sessions,false),
+  schedule:mergeArrayById(local.schedule,remote.schedule,false),
+  activities:mergeArrayById(local.activities,remote.activities,false),
+  watchlist:mergeArrayById(local.watchlist,remote.watchlist,true),/* local status ALWAYS wins */
+  habits:mergeArrayById(local.habits,remote.habits,false),
+  mood:local.mood||remote.mood||'',
+  moodEmoji:local.moodEmoji||remote.moodEmoji||'',
+  journal:local.journal||remote.journal||'',
+  rating:local.rating||remote.rating||0
+};}
 function mergeMeta(local,remote){const planMap=new Map();(local.plans||[]).forEach(p=>planMap.set(p.id,p));(remote.plans||[]).forEach(p=>{if(!planMap.has(p.id))planMap.set(p.id,p);});const courseSet=new Set([...(local.courses||[]),...(remote.courses||[])]);if(!courseSet.has('CSEB'))courseSet.add('CSEB');return{...remote,plans:Array.from(planMap.values()),courses:Array.from(courseSet),streak:Math.max(local.streak||0,remote.streak||0),autoCarryActivities:remote.autoCarryActivities||local.autoCarryActivities||false,autoCarryHabits:remote.autoCarryHabits||local.autoCarryHabits||false};}
 async function migrateLegacyData(uid){const LEGACY_STORE='dp6_day_',LEGACY_META='dp6_meta',legacyKeys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(LEGACY_STORE))legacyKeys.push(k);}const legacyMeta=localStorage.getItem(LEGACY_META);if(!legacyMeta&&!legacyKeys.length)return;setLoadingMsg('Migrating your data…');const newMetaKey='dp6_'+uid+'_meta',newStore='dp6_'+uid+'_day_';if(legacyMeta){try{const parsed=JSON.parse(legacyMeta);const existing=await window._fbLoadMeta(uid);if(existing.exists()){const merged=mergeMeta(parsed,existing.data());localStorage.setItem(newMetaKey,JSON.stringify(merged));await window._fbSaveMeta(uid,merged);}else{localStorage.setItem(newMetaKey,legacyMeta);await window._fbSaveMeta(uid,parsed);}localStorage.removeItem(LEGACY_META);}catch(e){}}for(const k of legacyKeys){const dateKey=k.replace(LEGACY_STORE,''),val=localStorage.getItem(k);if(!val)continue;try{const parsed=JSON.parse(val),newKey=newStore+dateKey;const existing=await window._fbLoadDay(uid,dateKey);if(existing.exists()){const merged=mergeDay(parsed,existing.data());localStorage.setItem(newKey,JSON.stringify(merged));await window._fbSaveDay(uid,dateKey,merged);}else{localStorage.setItem(newKey,val);await window._fbSaveDay(uid,dateKey,parsed);}localStorage.removeItem(k);}catch(e){}}}
 async function syncFromFirestore(uid){setLoadingMsg('Syncing from cloud…');const newMetaKey='dp6_'+uid+'_meta',newStore='dp6_'+uid+'_day_';try{const metaDoc=await window._fbLoadMeta(uid);if(metaDoc.exists()){const fsData=metaDoc.data(),localStr=localStorage.getItem(newMetaKey);if(localStr){const merged=mergeMeta(JSON.parse(localStr),fsData);localStorage.setItem(newMetaKey,JSON.stringify(merged));}else localStorage.setItem(newMetaKey,JSON.stringify(fsData));}else{const localStr=localStorage.getItem(newMetaKey);if(localStr)try{await window._fbSaveMeta(uid,JSON.parse(localStr));}catch(e){}}const daysSnap=await window._fbLoadAllDays(uid);const fsKeys=new Set();for(const docSnap of daysSnap.docs){const dateKey=docSnap.id;fsKeys.add(dateKey);const fsData=docSnap.data(),localKey=newStore+dateKey,localStr=localStorage.getItem(localKey);if(localStr){const merged=mergeDay(JSON.parse(localStr),fsData);localStorage.setItem(localKey,JSON.stringify(merged));}else localStorage.setItem(localKey,JSON.stringify(fsData));}for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(newStore)){const dateKey=k.replace(newStore,'');if(!fsKeys.has(dateKey)){const val=localStorage.getItem(k);if(val)try{await window._fbSaveDay(uid,dateKey,JSON.parse(val));}catch(e){}}}}showSyncState('synced');}catch(e){showSyncState('error');}}
@@ -2423,30 +2437,28 @@ function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user
     _hbInterval=setInterval(()=>{
       const now=Date.now(),gap=now-_lastHeartbeat;
       _lastHeartbeat=now;
-      if(gap<12000)return;/* normal check interval jitter — ignore */
-      /* Classify gap */
+      /* Raise from 12s → 45s: Chrome throttles setInterval to ~1/min
+         in background tabs causing false 27-60s "visible" gaps */
+      if(gap<45000)return;
+      /* Chrome sometimes skips visibilitychange before killing a tab.
+         Use hasFocus() as secondary signal alongside _wasHidden. */
+      const actuallyFocused=document.hasFocus();
+      const actuallyVisible=document.visibilityState==='visible';
+      const trueBackground=_wasHidden||!actuallyVisible||!actuallyFocused;
       let type,label;
-      if(_wasHidden||document.visibilityState==='hidden'||!_focused){
-        /* App was backgrounded — not a real freeze */
-        type=gap<45000?'minor_pause':gap<120000?'background_suspend':gap<300000?'possible_suspend':'probable_background_kill';
-        label=`Lifecycle event (${type}), gap=${Math.round(gap/1000)}s, wasHidden=${_wasHidden}`;
-        /* Only log long suspensions — skip minor pauses to reduce noise */
-        if(gap<120000){_wasHidden=false;return;}
+      if(trueBackground){
+        type=gap<120000?'background_suspend':gap<300000?'possible_suspend':'probable_background_kill';
+        label=`Background lifecycle (${type}), gap=${Math.round(gap/1000)}s`;
+        if(gap<120000){_wasHidden=false;return;}/* suppress short background pauses */
       } else {
-        /* Page stayed visible and focused — real freeze candidate */
+        /* Raise possible_freeze bar to 90s — eliminates Chrome timer-throttle
+           false positives (27-56s gaps seen in production data) */
+        if(gap<90000){_wasHidden=false;return;}
         type='possible_freeze';
         label=`Possible UI freeze, gap=${Math.round(gap/1000)}s`;
       }
       _wasHidden=false;
-      _report(type,label,{
-        stack:null,
-        visibilityState:document.visibilityState,
-        wasHidden:_wasHidden,
-        focused:_focused,
-        startupPhase:_startupPhase,
-        firstPaintDone:_firstPaintDone,
-        splashVisible:!!document.getElementById('pl-splash')
-      });
+      _report(type,label,{stack:null,visibilityState:document.visibilityState,wasHidden:trueBackground,hasFocus:actuallyFocused,startupPhase:_startupPhase,firstPaintDone:_firstPaintDone});
     },10000);
   }
 
