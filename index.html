@@ -1747,15 +1747,14 @@ function mergeArrayById(local,remote,preferLocal){
   (remote||[]).forEach(x=>map.set(x.id,x));
   (local||[]).forEach(x=>{
     if(!map.has(x.id)){map.set(x.id,x);}
-    else if(preferLocal){
-      /* local wins */
-      map.set(x.id,{...map.get(x.id),...x});
-    } else {
-
+    else if(preferLocal){map.set(x.id,{...map.get(x.id),...x});}
+    else{
       const R=map.get(x.id);
-      const rank={done:2,watching:1,planned:0};
-      const lr=rank[x.status]??-1,rr=rank[R.status]??-1;
-      if(lr>=rr)map.set(x.id,{...R,...x});
+      if(x.status!==undefined&&R.status!==undefined){
+        const rank={done:2,watching:1,planned:0};
+        const lr=rank[x.status]??-1,rr=rank[R.status]??-1;
+        if(lr>=rr)map.set(x.id,{...R,...x});
+      }else{map.set(x.id,{...x,...R});}/* remote wins for sessions/activities */
     }
   });
   return Array.from(map.values());
@@ -1788,7 +1787,7 @@ function render(secs){
   /* Section-specific renders — only when that section/subsection visible */
   if(has('sessions')&&studyActive&&_subActive('sp-study'))renderSessions();
   if(has('schedule')){if(studyActive&&_subActive('sp-sched'))renderSchedule();}
-  if(has('activities')&&actActive){renderActivities();renderSleepList();renderWorkoutList();}
+  if(has('activities')&&actActive){renderActivities();renderSleepList();renderWorkoutList();renderHabitList();}
   if(has('watch'))renderWatch();
   /* Overview and score: always run when requested (feeds home AND overviews used by other code) */
   if(has('overview')||has('plans'))_renderOverviewDebounced();
@@ -1913,7 +1912,7 @@ function calcWorkoutDur(){
   let sm=timeToMin(s),em=timeToMin(e);
   if(em<=sm)em+=1440;
   const d=Math.round((em-sm)/60*4)/4;
-  if(d>0)document.getElementById('workout-dur').value=d;
+  if(d>=0)document.getElementById('workout-dur').value=d;
 }
 function addWorkout(){
   const start=getTime('tp-workout-time'),end=getTime('tp-workout-end');
