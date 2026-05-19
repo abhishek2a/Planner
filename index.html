@@ -923,7 +923,6 @@ select option{background:var(--surf2);}
   <div class="spl-txt" id="spl-txt">Initializing…</div>
 </div>
 
-<!-- ── LOADING SPLASH (original auth loader) ── -->
 <div class="auth-loading" id="auth-loading">
   <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;letter-spacing:-.04em;"><span style="color:var(--amber)">Planner</span></div>
   <div class="auth-spinner"></div>
@@ -988,7 +987,7 @@ select option{background:var(--surf2);}
       <div class="nav-dot"></div><div class="nav-icon">✏️</div><div class="nav-label">Activity</div>
     </button>
     <button class="nav-btn" onclick="switchTab('more',this);renderWatch();" id="nav-more">
-      <div class="nav-dot"></div><div class="nav-icon">▶</div><div class="nav-label">More</div>
+      <div class="nav-dot"></div><div class="nav-icon">🎬</div><div class="nav-label">More</div>
     </button>
   </nav>
 
@@ -1433,18 +1432,17 @@ select option{background:var(--surf2);}
 </div><!-- .app -->
 
 <script>
-/* ── Early error capture — runs before any other code ── */
+
 window._earlyErrors=[];
 window.onerror=function(msg,file,line,col,err){window._earlyErrors.push({type:'runtime',msg,file,line,col,stack:err&&err.stack,ts:new Date().toISOString()});return false;};
 window.onunhandledrejection=function(ev){const r=ev&&ev.reason;window._earlyErrors.push({type:'promise',msg:r instanceof Error?r.message:String(r||''),stack:r instanceof Error?r.stack:null,ts:new Date().toISOString()});};
-/* ── End early capture ── */
+
 (function(){
   const manifest={name:"Planner",short_name:"Planner",start_url:"./",display:"standalone",background_color:"#080706",theme_color:"#080706",orientation:"portrait-primary"};
   const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
   document.getElementById('pwa-manifest').href=URL.createObjectURL(blob);
 })();
 
-/* ── SPLASH ORCHESTRATION ── */
 /* Only show on fresh page load — not on tab resume/background restore */
 const _isFreshStart=!sessionStorage.getItem('pl-loaded');
 if(_isFreshStart){sessionStorage.setItem('pl-loaded','1');}
@@ -1480,7 +1478,6 @@ const CHANGELOG = [
   'Lifecycle-aware freeze telemetry'
 ];
 
-/* ── Service Worker Registration & Update Detection ── */
 let _swWaiting = null;
 let _swRegistration = null;
 
@@ -1536,7 +1533,7 @@ function showUpdateBanner() {
 function applyUpdate() {
   dismissUpdate();
   /* Step 1: clear all caches so Safari iOS can't serve stale shell */
-  const clearCaches = () => caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k)))).catch(() => {});
+  const clearCaches = () => caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k)))).catch(()=>{});
   /* Step 2: hard navigate (not reload) — bypasses Safari bfcache */
   const hardNav = () => { window.location.href = window.location.href.split('?')[0] + '?_u=' + Date.now(); };
   if (_swWaiting) {
@@ -1714,7 +1711,6 @@ let _syncDayTimers={},_syncMetaTimer=null;
 function _syncDay(key,dayData){if(!_currentUser)return;clearTimeout(_syncDayTimers[key]);_syncDayTimers[key]=setTimeout(()=>{showSyncState('syncing');window._fbSaveDay(_currentUser.uid,key,dayData).then(()=>showSyncState('synced')).catch(e=>{showSyncState('error');window._crFirebaseError&&window._crFirebaseError('syncDay failed: '+(e&&e.message),{stack:e&&e.stack});});},3000);}
 function _syncMeta(){if(!_currentUser)return;clearTimeout(_syncMetaTimer);_syncMetaTimer=setTimeout(()=>{showSyncState('syncing');window._fbSaveMeta(_currentUser.uid,meta).then(()=>showSyncState('synced')).catch(e=>{showSyncState('error');window._crFirebaseError&&window._crFirebaseError('syncMeta failed: '+(e&&e.message),{stack:e&&e.stack});});},3000);}
 
-/* ── Memoization caches ── */
 let _planSessionsCache={},_planHoursCache={};
 function _invalidatePlanCache(){_planSessionsCache={};_planHoursCache={};}
 function getPlanSessions(planId){if(_planSessionsCache[planId])return _planSessionsCache[planId];const result=[];getAllDayKeys().forEach(k=>{const d=getDayData(k);if(!d||!d.sessions)return;d.sessions.forEach(s=>{if(s.planId===planId)result.push({...s,dayKey:k});});});data.sessions.forEach(s=>{if(s.planId===planId&&!result.find(r=>r.id===s.id))result.push({...s,dayKey:currentKey});});result.sort((a,b)=>a.dayKey.localeCompare(b.dayKey));_planSessionsCache[planId]=result;return result;}
@@ -1748,14 +1744,14 @@ async function manualSync(){
 }
 function mergeArrayById(local,remote,preferLocal){
   const map=new Map();
-  (remote||[]).forEach(x=>map.set(x.id,x));/* remote base */
+  (remote||[]).forEach(x=>map.set(x.id,x));
   (local||[]).forEach(x=>{
     if(!map.has(x.id)){map.set(x.id,x);}
     else if(preferLocal){
-      /* Local wins — user edits override stale remote (status changes, etc.) */
+      /* local wins */
       map.set(x.id,{...map.get(x.id),...x});
     } else {
-      /* Generic: keep whichever has more-progressed watch status */
+
       const R=map.get(x.id);
       const rank={done:2,watching:1,planned:0};
       const lr=rank[x.status]??-1,rr=rank[R.status]??-1;
@@ -1769,7 +1765,7 @@ function mergeDay(local,remote){return{
   sessions:mergeArrayById(local.sessions,remote.sessions,false),
   schedule:mergeArrayById(local.schedule,remote.schedule,false),
   activities:mergeArrayById(local.activities,remote.activities,false),
-  watchlist:mergeArrayById(local.watchlist,remote.watchlist,true),/* local status ALWAYS wins */
+  watchlist:mergeArrayById(local.watchlist,remote.watchlist,true),
   habits:mergeArrayById(local.habits,remote.habits,false),
   mood:local.mood||remote.mood||'',
   moodEmoji:local.moodEmoji||remote.moodEmoji||'',
@@ -1780,7 +1776,6 @@ function mergeMeta(local,remote){const planMap=new Map();(local.plans||[]).forEa
 async function migrateLegacyData(uid){const LEGACY_STORE='dp6_day_',LEGACY_META='dp6_meta',legacyKeys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(LEGACY_STORE))legacyKeys.push(k);}const legacyMeta=localStorage.getItem(LEGACY_META);if(!legacyMeta&&!legacyKeys.length)return;setLoadingMsg('Migrating your data…');const newMetaKey='dp6_'+uid+'_meta',newStore='dp6_'+uid+'_day_';if(legacyMeta){try{const parsed=JSON.parse(legacyMeta);const existing=await window._fbLoadMeta(uid);if(existing.exists()){const merged=mergeMeta(parsed,existing.data());localStorage.setItem(newMetaKey,JSON.stringify(merged));await window._fbSaveMeta(uid,merged);}else{localStorage.setItem(newMetaKey,legacyMeta);await window._fbSaveMeta(uid,parsed);}localStorage.removeItem(LEGACY_META);}catch(e){}}for(const k of legacyKeys){const dateKey=k.replace(LEGACY_STORE,''),val=localStorage.getItem(k);if(!val)continue;try{const parsed=JSON.parse(val),newKey=newStore+dateKey;const existing=await window._fbLoadDay(uid,dateKey);if(existing.exists()){const merged=mergeDay(parsed,existing.data());localStorage.setItem(newKey,JSON.stringify(merged));await window._fbSaveDay(uid,dateKey,merged);}else{localStorage.setItem(newKey,val);await window._fbSaveDay(uid,dateKey,parsed);}localStorage.removeItem(k);}catch(e){}}}
 async function syncFromFirestore(uid){setLoadingMsg('Syncing from cloud…');const newMetaKey='dp6_'+uid+'_meta',newStore='dp6_'+uid+'_day_';try{const metaDoc=await window._fbLoadMeta(uid);if(metaDoc.exists()){const fsData=metaDoc.data(),localStr=localStorage.getItem(newMetaKey);if(localStr){const merged=mergeMeta(JSON.parse(localStr),fsData);localStorage.setItem(newMetaKey,JSON.stringify(merged));}else localStorage.setItem(newMetaKey,JSON.stringify(fsData));}else{const localStr=localStorage.getItem(newMetaKey);if(localStr)try{await window._fbSaveMeta(uid,JSON.parse(localStr));}catch(e){}}const daysSnap=await window._fbLoadAllDays(uid);const fsKeys=new Set();for(const docSnap of daysSnap.docs){const dateKey=docSnap.id;fsKeys.add(dateKey);const fsData=docSnap.data(),localKey=newStore+dateKey,localStr=localStorage.getItem(localKey);if(localStr){const merged=mergeDay(JSON.parse(localStr),fsData);localStorage.setItem(localKey,JSON.stringify(merged));}else localStorage.setItem(localKey,JSON.stringify(fsData));}for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(newStore)){const dateKey=k.replace(newStore,'');if(!fsKeys.has(dateKey)){const val=localStorage.getItem(k);if(val)try{await window._fbSaveDay(uid,dateKey,JSON.parse(val));}catch(e){}}}}showSyncState('synced');}catch(e){showSyncState('error');}}
 
-/* ── Helpers: check which section/subsection is visible ── */
 function _secActive(id){const el=document.getElementById(id);return el&&el.closest('.section.active')!==null;}
 function _subActive(id){const el=document.getElementById(id);return el&&el.style.display!=='none';}
 
@@ -1808,7 +1803,6 @@ let _ovTimer=null;
 const _renderOverviewDebounced=()=>{clearTimeout(_ovTimer);_ovTimer=setTimeout(renderOverview,80);};
 function renderAll(){render(null);}
 
-/* ── Schedule tick: setInterval instead of RAF loop (cheaper on iOS) ── */
 let _schedInterval=null;
 function _startSchedTick(){if(_schedInterval)return;_schedInterval=setInterval(()=>{if(document.visibilityState!=='visible')return;if(!data.schedule.length)return;const homeActive=document.getElementById('sec-home')?.classList.contains('active');const studySchedActive=document.getElementById('sec-studyplan')?.classList.contains('active')&&_subActive('sp-sched');if(homeActive)renderOverview();if(studySchedActive)renderSchedule();},60000);}
 function _stopSchedTick(){if(_schedInterval){clearInterval(_schedInterval);_schedInterval=null;}}
@@ -1882,7 +1876,7 @@ function renderScore(){const{score,studyPct,taskPct,ratingPct}=calcScore();const
 function addSession(){const sub=document.getElementById('sess-subject').value.trim(),durRaw=document.getElementById('sess-dur').value,dur=parseFloat(durRaw);if(!sub){alert('⚠️ Enter a subject name.');return;}if(!durRaw||isNaN(dur)||dur<=0){alert('⚠️ Enter a valid duration (e.g. 1.5).');return;}if(dur>24){alert('⚠️ Duration cannot exceed 24 hours.');return;}const planId=_selectedPlanId||null;data.sessions.push({id:uid(),subject:sub,duration:dur,time:getTime('tp-sess'),planId,notes:document.getElementById('sess-notes').value.trim()});data.sessions.sort((a,b)=>{if(!a.time&&!b.time)return 0;if(!a.time)return 1;if(!b.time)return-1;return a.time.localeCompare(b.time);});document.getElementById('sess-subject').value='';document.getElementById('sess-dur').value='';document.getElementById('sess-notes').value='';resetTP('tp-sess');saveDay(['sessions','overview','score']);renderPlanQuickPick();if(document.getElementById('sp-plans')&&document.getElementById('sp-plans').style.display!=='none')renderPlans();}
 function isOverlap(start,end,excludeId){const newEnd=end||start;return data.schedule.some(s=>{if(excludeId&&s.id===excludeId)return false;const sEnd=s.end||s.start;return!(newEnd<=s.start||start>=sEnd);});}
 function addSchedule(){const title=document.getElementById('sch-title').value.trim(),start=getTime('tp-sch-start'),end=getTime('tp-sch-end'),dateVal=document.getElementById('sch-date').value||'';if(!title){alert('⚠️ Enter a title for the block.');return;}if(!start){alert('⚠️ Select a start time.');return;}if(end&&end<=start){alert('⚠️ End time must be after start time.');return;}const targetKey=dateVal||currentKey,isFuture=dateVal&&dateVal!==currentKey;if(!isFuture&&isOverlap(start,end,null)){alert('⚠️ Time overlaps an existing block.');return;}const entry={id:uid(),start,end,type:document.getElementById('sch-type').value,title,desc:document.getElementById('sch-desc').value.trim()};if(isFuture){const d=getOrCreateDayData(targetKey);d.schedule=d.schedule||[];d.schedule.push(entry);d.schedule.sort((a,b)=>a.start.localeCompare(b.start));saveDayToKey(targetKey,d);alert('✓ Block saved for '+fmtKey(targetKey));}else{data.schedule.push(entry);data.schedule.sort((a,b)=>a.start.localeCompare(b.start));saveDay(['schedule','overview']);}document.getElementById('sch-title').value='';document.getElementById('sch-desc').value='';document.getElementById('sch-date').value='';resetTP('tp-sch-start');resetTP('tp-sch-end');}
-/* ── Sleep & Workout helpers ── */
+
 function calcSleepDur(){
   const s=getTime('tp-sleep-start'),e=getTime('tp-sleep-end');
   if(!s||!e)return;
@@ -2302,9 +2296,7 @@ async function initApp(user){
   document.getElementById('auth-loading').classList.remove('hidden');document.getElementById('main-app').style.display='none';setLoadingMsg('Setting up…');STORE='dp6_'+user.uid+'_day_';META_K='dp6_'+user.uid+'_meta';_dayKeysCache=null;currentKey=todayKey();_selectedPlanId=null;await migrateLegacyData(user.uid);await syncFromFirestore(user.uid);invalidateDayKeysCache();_invalidateDayDataCache();_invalidatePlanCache();_invalidateWatchCache();loadMeta();loadDay(currentKey);(function(){const lbl=(data.goal.label||'').trim().toLowerCase();if(lbl){const m=meta.plans.find(p=>p.name.toLowerCase()===lbl&&daysUntil(p.date)>=0);if(m){_selectedPlanId=m.id;return;}}const linked=data.sessions.filter(s=>s.planId).sort((a,b)=>(b.time||'').localeCompare(a.time||''));if(linked.length){const pid=linked[0].planId;if(meta.plans.find(p=>p.id===pid&&daysUntil(p.date)>=0))_selectedPlanId=pid;}})();_splashMsg('Preparing dashboard…');applyTheme();initTimePickers();initDate();_streakLastCalc="";updateStreak(true);renderAll();renderPlanQuickPick();renderCourseSelect('plan-course','');renderCarryToggles();hideAuthScreen();}
 
 function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user);}else{showAuthScreen();}});}
-/* ─────────────────────────────────────────────
-   CRASH REPORTER  v1.0  (non-blocking, silent)
-   ───────────────────────────────────────────── */
+
 (function(){
   const CR_VERSION = '1.0';
   const _seen = new Set();        /* dedup identical errors */
@@ -2313,7 +2305,6 @@ function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user
   let _lastHeartbeat = Date.now();
   let _hbInterval = null;
 
-  /* ── Environment ── */
   function _env(){
     const ua=navigator.userAgent||'';
     const isSafari=/^((?!chrome|android).)*safari/i.test(ua);
@@ -2352,18 +2343,15 @@ function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user
     }catch(e){return '?';}
   }
 
-  /* ── Dedup key ── */
   function _key(msg,line){return (msg||'')+'|'+(line||'');}
 
-  /* ── Send one report ── */
   function _send(report){
     if(!window._fbCrashReport){_queue.push(report);return;}
     if(!navigator.onLine){_queue.push(report);return;}
-    /* fire-and-forget */
+
     Promise.resolve().then(()=>window._fbCrashReport(report)).catch(()=>{});
   }
 
-  /* ── Flush offline queue ── */
   function _flush(){
     if(_sending||!_queue.length||!navigator.onLine||!window._fbCrashReport)return;
     _sending=true;
@@ -2376,7 +2364,6 @@ function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user
     )).finally(()=>{_sending=false;});
   }
 
-  /* ── Build & submit report ── */
   function _report(type,msg,extra){
     try{
       const k=_key(msg,extra&&extra.line);
@@ -2399,7 +2386,6 @@ function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user
     }catch(e){/* never throw from reporter */}
   }
 
-  /* ── Global handlers (replace early stubs) ── */
   window.onerror=function(msg,file,line,col,err){
     _report('runtime',msg,{file,line,col,stack:err&&err.stack});
     return false;
@@ -2410,13 +2396,11 @@ function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user
     _report('promise',msg,{stack:reason instanceof Error?reason.stack:null});
   };
 
-  /* ── Flush errors caught before reporter was ready ── */
   if(window._earlyErrors&&window._earlyErrors.length){
     window._earlyErrors.forEach(e=>_report(e.type,e.msg,{file:e.file,line:e.line,col:e.col,stack:e.stack}));
     window._earlyErrors=[];
   }
 
-  /* ── Lifecycle tracking ── */
   let _wasHidden=false,_lastVisible=Date.now(),_lastFocus=Date.now();
   let _focused=true,_startupPhase='init',_firstPaintDone=false;
   const _lcLog=[];/* small ring buffer for diagnostics */
@@ -2431,7 +2415,6 @@ function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user
   window.addEventListener('pagehide',()=>{_addLC('pagehide');});
   window.addEventListener('pageshow',(e)=>{_addLC(e.persisted?'pageshow-bfcache':'pageshow');});
 
-  /* ── Lifecycle-aware heartbeat ── */
   function _startHeartbeat(){
     _lastHeartbeat=Date.now();
     _hbInterval=setInterval(()=>{
@@ -2449,7 +2432,7 @@ function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user
       if(trueBackground){
         type=gap<120000?'background_suspend':gap<300000?'possible_suspend':'probable_background_kill';
         label=`Background lifecycle (${type}), gap=${Math.round(gap/1000)}s`;
-        if(gap<120000){_wasHidden=false;return;}/* suppress short background pauses */
+        if(gap<120000){_wasHidden=false;return;}
       } else {
         /* Raise possible_freeze bar to 90s — eliminates Chrome timer-throttle
            false positives (27-56s gaps seen in production data) */
@@ -2462,12 +2445,10 @@ function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user
     },10000);
   }
 
-  /* ── Startup perf ── */
   const _t0=performance.now();
   const _startupTiming={};
   function _markStartup(key){_startupTiming[key]=Math.round(performance.now()-_t0);}
 
-  /* ── Developer diagnostics ── */
   window.debugLifecycle=()=>{console.table(_lcLog);return _lcLog;};
   window.debugStartup=()=>{console.table(_startupTiming);return _startupTiming;};
   window.debugHeartbeat=()=>({lastBeat:_lastHeartbeat,wasHidden:_wasHidden,focused:_focused,phase:_startupPhase});
@@ -2475,29 +2456,23 @@ function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user
   window._markStartup=_markStartup;
   window._firstPaintDone=false;
 
-  /* ── SW error capture ── */
   window._crSWError=function(msg,extra){_report('sw',msg,extra);};
 
-  /* ── Firebase error capture (call from sync) ── */
   window._crFirebaseError=function(msg,extra){_report('firebase',msg,extra);};
 
-  /* ── Flush on reconnect ── */
   window.addEventListener('online',_flush);
 
-  /* ── Start heartbeat after load ── */
   window.addEventListener('load',()=>{
     _startHeartbeat();
     /* flush any queued reports */
     setTimeout(_flush,5000);
   });
 
-  /* ── Manual debug export ── */
   function _debugInfo(){
     const e=_env();
     return `Planner Debug\nVersion: ${e.appVersion}\nBrowser: ${e.browser}\nPlatform: ${e.platform}\nPWA: ${e.standalonePWA}\nViewport: ${e.vpW}x${e.vpH}\nOnline: ${e.onlineStatus}\nSection: ${e.section}\nMemory: ${e.memoryMB!==null?e.memoryMB+'MB':'n/a'}\nConnection: ${e.connType||'n/a'}\nTimezone: ${e.timezone}`;
   }
 
-  /* ── Dev helpers ── */
   window.debugCrashReporter={
     getEnv:_env,
     getQueue:()=>[..._queue],
@@ -2512,10 +2487,8 @@ function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user
   };
 
 })();
-/* ── End crash reporter ── */
 
 if(window._fbReady){startAuthListener();}
 else{window.addEventListener('fb-ready',startAuthListener);}
 </script>
 </body>
-</html>
