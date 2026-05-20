@@ -1617,6 +1617,28 @@ function showSyncState(state){
 }
 
 let _currentUser=null;
+let _activeRuntimeUid=null;/* tracks which UID owns current runtime */
+
+function defaultMeta(){return{streak:0,habits:[],plans:[],courses:['CSEB'],autoCarryActivities:false,autoCarryHabits:false};}
+
+function hardResetRuntime(){
+  /* Cancel all pending sync timers to prevent cross-account writes */
+  Object.values(_syncDayTimers||{}).forEach(t=>clearTimeout(t));
+  clearTimeout(_syncMetaTimer);
+  _syncDayTimers={};_syncMetaTimer=null;
+  /* Clear all caches */
+  _dayDataCache.clear();
+  _invalidateDayDataCache();_invalidatePlanCache();_invalidateWatchCache();
+  invalidateDayKeysCache();
+  /* Reset data */
+  data=emptyDay();meta=defaultMeta();
+  _selectedPlanId=null;_activeRuntimeUid=null;
+  STORE='dp6_day_';META_K='dp6_meta';
+  _stopSchedTick();
+}
+
+/* Auth guard — block stale cross-account writes */
+function _authGuard(){return _currentUser&&_currentUser.uid===_activeRuntimeUid;}
 function showAuthScreen(){
   document.getElementById('auth-loading').classList.add('hidden');
   document.getElementById('main-app').style.display='none';
@@ -1642,7 +1664,7 @@ function setAuthBusy(busy){document.getElementById('btn-login').disabled=busy;do
 function fmtFirebaseErr(code){const map={'auth/user-not-found':'No account found with that email.','auth/wrong-password':'Incorrect password.','auth/invalid-email':'Invalid email address.','auth/email-already-in-use':'An account with that email already exists.','auth/weak-password':'Password must be at least 6 characters.','auth/too-many-requests':'Too many attempts. Please try again later.','auth/network-request-failed':'Network error. Check your connection.','auth/invalid-credential':'Incorrect email or password.'};return map[code]||'Something went wrong. Please try again.';}
 function doLogin(){clearAuthErr();const email=document.getElementById('li-email').value.trim(),pass=document.getElementById('li-pass').value;if(!email||!pass){showAuthErr('Please fill in all fields.');return;}setAuthBusy(true);window._fbLogin(email,pass).then(()=>setAuthBusy(false)).catch(err=>{setAuthBusy(false);showAuthErr(fmtFirebaseErr(err.code));});}
 function doSignup(){clearAuthErr();const name=document.getElementById('su-name').value.trim(),email=document.getElementById('su-email').value.trim(),pass=document.getElementById('su-pass').value;if(!email||!pass){showAuthErr('Email and password are required.');return;}if(pass.length<6){showAuthErr('Password must be at least 6 characters.');return;}setAuthBusy(true);window._fbSignup(email,pass,name).then(()=>setAuthBusy(false)).catch(err=>{setAuthBusy(false);showAuthErr(fmtFirebaseErr(err.code));});}
-function doLogout(){if(!confirm('Sign out of Planner?'))return;window._fbLogout().then(()=>{_currentUser=null;_stopSchedTick();STORE='dp6_day_';META_K='dp6_meta';data=emptyDay();meta={streak:0,habits:[],plans:[],courses:['CSEB'],autoCarryActivities:false,autoCarryHabits:false};_selectedPlanId=null;showAuthScreen();});}
+function doLogout(){if(!confirm('Sign out of Planner?'))return;window._fbLogout().then(()=>{_currentUser=null;hardResetRuntime();showAuthScreen();});}
 document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const ls=document.getElementById('auth-screen');if(ls&&!ls.classList.contains('hidden')){const tab=document.getElementById('tab-login').classList.contains('active');if(tab)doLogin();else doSignup();}});
 
 function openChangeUsername(){
@@ -1659,7 +1681,7 @@ function saveChangePassword(){const cur=document.getElementById('ei-cur-pass').v
 function showAcctEditErr(msg){const el=document.getElementById('acct-edit-err');if(el){el.textContent=msg;el.style.display='block';}}
 
 let STORE='dp6_day_', META_K='dp6_meta';
-let meta={streak:0,habits:[],plans:[],courses:['CSEB'],autoCarryActivities:false,autoCarryHabits:false};
+let meta=defaultMeta();
 let data=emptyDay(), currentKey=todayKey();
 let _selectedPlanId=null;
 
@@ -1708,8 +1730,8 @@ function updateStreak(force){
 function _applyStreak(n){const txt='🔥 '+n+(n===1?' day':' days');const el=document.getElementById('acct-streak');if(el)el.textContent=txt;}
 
 let _syncDayTimers={},_syncMetaTimer=null;
-function _syncDay(key,dayData){if(!_currentUser)return;clearTimeout(_syncDayTimers[key]);_syncDayTimers[key]=setTimeout(()=>{showSyncState('syncing');window._fbSaveDay(_currentUser.uid,key,dayData).then(()=>showSyncState('synced')).catch(e=>{showSyncState('error');window._crFirebaseError&&window._crFirebaseError('syncDay failed: '+(e&&e.message),{stack:e&&e.stack});});},3000);}
-function _syncMeta(){if(!_currentUser)return;clearTimeout(_syncMetaTimer);_syncMetaTimer=setTimeout(()=>{showSyncState('syncing');window._fbSaveMeta(_currentUser.uid,meta).then(()=>showSyncState('synced')).catch(e=>{showSyncState('error');window._crFirebaseError&&window._crFirebaseError('syncMeta failed: '+(e&&e.message),{stack:e&&e.stack});});},3000);}
+function _syncDay(key,dayData){if(!_authGuard())return;clearTimeout(_syncDayTimers[key]);_syncDayTimers[key]=setTimeout(()=>{if(!_authGuard())return;showSyncState('syncing');window._fbSaveDay(_currentUser.uid,key,dayData).then(()=>showSyncState('synced')).catch(e=>{showSyncState('error');window._crFirebaseError&&window._crFirebaseError('syncDay failed: '+(e&&e.message),{stack:e&&e.stack});});},3000);}
+function _syncMeta(){if(!_authGuard())return;clearTimeout(_syncMetaTimer);_syncMetaTimer=setTimeout(()=>{if(!_authGuard())return;showSyncState('syncing');window._fbSaveMeta(_currentUser.uid,meta).then(()=>showSyncState('synced')).catch(e=>{showSyncState('error');window._crFirebaseError&&window._crFirebaseError('syncMeta failed: '+(e&&e.message),{stack:e&&e.stack});});},3000);}
 
 let _planSessionsCache={},_planHoursCache={};
 function _invalidatePlanCache(){_planSessionsCache={};_planHoursCache={};}
@@ -2025,7 +2047,18 @@ function toggleHabit(id){
 function renderHabitList(){
   const el=document.getElementById('habit-list');if(!el)return;
   if(!data.habits||!data.habits.length){el.innerHTML=emptyHTML('🔄','No habits tracked today');return;}
-  el.innerHTML=data.habits.map(h=>`<div class="mini-list-item"><div class="mli-left" style="display:flex;align-items:center;gap:8px;"><span style="font-size:18px;">${h.done?'✅':'⬜'}</span><span style="${h.done?'text-decoration:line-through;color:var(--text3);':''}">${esc(h.name)}</span></div><div class="mli-right" style="display:flex;gap:6px;"><button class="btn-ghost" style="min-height:30px;padding:0 10px;font-size:12px;" onclick="toggleHabit('${h.id}')">${h.done?'Undo':'Done'}</button><button class="btn-del" onclick="data.habits=data.habits.filter(x=>x.id!='${h.id}');saveDay(['activities']);renderHabitList()">✕</button></div></div>`).join('');
+  const done=data.habits.filter(h=>h.done).length;
+  el.innerHTML=`<div style="padding:10px 20px 4px;font-size:.63rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;">${done}/${data.habits.length} completed</div>`+
+  data.habits.map(h=>`<div class="act-card${h.done?' completed':''}">
+    <div class="act-top">
+      <div class="act-name">${esc(h.name)}</div>
+      <div class="priority-dot" style="background:${h.done?'var(--teal)':'var(--border2)'};box-shadow:${h.done?'0 0 8px rgba(22,186,168,.5)':'none'};margin-top:5px;"></div>
+    </div>
+    <div class="act-foot">
+      <label class="check-row"><input type="checkbox" ${h.done?'checked':''} onchange="toggleHabit('${h.id}')"> Done</label>
+      <button class="btn-del" onclick="data.habits=data.habits.filter(x=>x.id!='${h.id}');saveDay(['activities'])">✕</button>
+    </div>
+  </div>`).join('');
 }
 function addActivity(){const name=document.getElementById('act-name').value.trim(),dateVal=document.getElementById('act-date').value||'';if(!name){alert('⚠️ Enter an activity name.');return;}const entry={id:uid(),name,category:'general',time:getTime('tp-act'),priority:document.getElementById('act-priority').value,notes:document.getElementById('act-notes').value.trim(),done:false};const targetKey=dateVal||currentKey,isFuture=dateVal&&dateVal!==currentKey;if(isFuture){const d=getOrCreateDayData(targetKey);d.activities=d.activities||[];d.activities.push(entry);saveDayToKey(targetKey,d);alert('✓ Saved for '+fmtKey(targetKey));}else{data.activities.push(entry);saveDay(['activities','overview','score']);}document.getElementById('act-name').value='';document.getElementById('act-notes').value='';document.getElementById('act-date').value='';resetTP('tp-act');}
 function addWatch(){const title=document.getElementById('watch-title').value.trim(),dateVal=document.getElementById('watch-date').value||'';if(!title){alert('⚠️ Enter a title.');return;}const entry={id:uid(),title,platform:document.getElementById('watch-platform').value,status:document.getElementById('watch-status').value,notes:document.getElementById('watch-notes').value.trim()};const targetKey=dateVal||currentKey,isFuture=dateVal&&dateVal!==currentKey;if(isFuture){const d=getOrCreateDayData(targetKey);d.watchlist=d.watchlist||[];d.watchlist.push(entry);saveDayToKey(targetKey,d);alert('✓ Saved for '+fmtKey(targetKey));}else{data.watchlist.push(entry);saveDay(['watch','overview']);}_invalidateWatchCache();/* refresh analytics if open */const wa=document.getElementById('watch-analytics-dash');if(wa&&wa.closest('#more-weekly')&&document.getElementById('more-weekly').style.display!=='none')renderWatchAnalytics();document.getElementById('watch-title').value='';document.getElementById('watch-notes').value='';document.getElementById('watch-date').value='';}
@@ -2288,10 +2321,16 @@ _startSchedTick();
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){_startSchedTick();render(null);const newKey=todayKey();if(newKey!==currentKey&&_currentUser){try{localStorage.setItem(STORE+currentKey,JSON.stringify(data));}catch(e){}currentKey=newKey;_selectedPlanId=null;_invalidatePlanCache();_invalidateWatchCache();loadDay(currentKey);initDate();renderAll();renderPlanQuickPick();}}else{_stopSchedTick();}});
 
 async function initApp(user){
+  /* Hard reset if switching accounts */
+  if(_activeRuntimeUid&&_activeRuntimeUid!==user.uid)hardResetRuntime();
   _currentUser=user;
+  _activeRuntimeUid=user.uid;
+  /* UID-scoped storage — prevents cross-account contamination */
+  STORE='dp6_'+user.uid+'_day_';
+  META_K='dp6_'+user.uid+'_meta';
   _splashMsg('Syncing planner…');
   window._markStartup&&window._markStartup('authRestored');
-  document.getElementById('auth-loading').classList.remove('hidden');document.getElementById('main-app').style.display='none';setLoadingMsg('Setting up…');STORE='dp6_'+user.uid+'_day_';META_K='dp6_'+user.uid+'_meta';_dayKeysCache=null;currentKey=todayKey();_selectedPlanId=null;await migrateLegacyData(user.uid);await syncFromFirestore(user.uid);invalidateDayKeysCache();_invalidateDayDataCache();_invalidatePlanCache();_invalidateWatchCache();loadMeta();loadDay(currentKey);(function(){const lbl=(data.goal.label||'').trim().toLowerCase();if(lbl){const m=meta.plans.find(p=>p.name.toLowerCase()===lbl&&daysUntil(p.date)>=0);if(m){_selectedPlanId=m.id;return;}}const linked=data.sessions.filter(s=>s.planId).sort((a,b)=>(b.time||'').localeCompare(a.time||''));if(linked.length){const pid=linked[0].planId;if(meta.plans.find(p=>p.id===pid&&daysUntil(p.date)>=0))_selectedPlanId=pid;}})();_splashMsg('Preparing dashboard…');applyTheme();initTimePickers();initDate();_streakLastCalc="";updateStreak(true);renderAll();renderPlanQuickPick();renderCourseSelect('plan-course','');renderCarryToggles();hideAuthScreen();}
+  document.getElementById('auth-loading').classList.remove('hidden');document.getElementById('main-app').style.display='none';setLoadingMsg('Setting up…');_dayKeysCache=null;currentKey=todayKey();_selectedPlanId=null;await migrateLegacyData(user.uid);await syncFromFirestore(user.uid);invalidateDayKeysCache();_invalidateDayDataCache();_invalidatePlanCache();_invalidateWatchCache();loadMeta();loadDay(currentKey);(function(){const lbl=(data.goal.label||'').trim().toLowerCase();if(lbl){const m=meta.plans.find(p=>p.name.toLowerCase()===lbl&&daysUntil(p.date)>=0);if(m){_selectedPlanId=m.id;return;}}const linked=data.sessions.filter(s=>s.planId).sort((a,b)=>(b.time||'').localeCompare(a.time||''));if(linked.length){const pid=linked[0].planId;if(meta.plans.find(p=>p.id===pid&&daysUntil(p.date)>=0))_selectedPlanId=pid;}})();_splashMsg('Preparing dashboard…');applyTheme();initTimePickers();initDate();_streakLastCalc="";updateStreak(true);renderAll();renderPlanQuickPick();renderCourseSelect('plan-course','');renderCarryToggles();hideAuthScreen();}
 
 function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user);}else{showAuthScreen();}});}
 
