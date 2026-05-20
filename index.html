@@ -2052,10 +2052,10 @@ function renderHabitList(){
   data.habits.map(h=>`<div class="act-card${h.done?' completed':''}">
     <div class="act-top">
       <div class="act-name">${esc(h.name)}</div>
-      <div class="priority-dot" style="background:${h.done?'var(--teal)':'var(--border2)'};box-shadow:${h.done?'0 0 8px rgba(22,186,168,.5)':'none'};margin-top:5px;"></div>
+      <div class="priority-dot" style="background:${h.done?'var(--teal)':'var(--border2)'};box-shadow:${h.done?'0 0 8px rgba(22,186,168,.5)':'none'};margin-top:5px;width:10px;height:10px;"></div>
     </div>
     <div class="act-foot">
-      <label class="check-row"><input type="checkbox" ${h.done?'checked':''} onchange="toggleHabit('${h.id}')"> Done</label>
+      <button class="btn btn-ghost" style="min-height:34px;font-size:13px;padding:0 14px;" onclick="toggleHabit('${h.id}')">${h.done?'✓ Done':'Mark Done'}</button>
       <button class="btn-del" onclick="data.habits=data.habits.filter(x=>x.id!='${h.id}');saveDay(['activities'])">✕</button>
     </div>
   </div>`).join('');
