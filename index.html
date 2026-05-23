@@ -883,7 +883,31 @@ select option{background:var(--surf2);}
   .wa-recent-item{padding:10px 24px;}
   .wa-top-pill{margin:0 24px 10px;}
 }
-/* ── UPDATE BANNER ── */
+/* ── PRODUCTIVITY SUMMARY ── */
+.ps-card{margin:0 20px 12px;background:linear-gradient(160deg,var(--surf),var(--surf2));border:1px solid var(--border);border-radius:var(--r);overflow:hidden;position:relative;}
+.ps-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--indigo),var(--purple),var(--teal));}
+.ps-head{padding:14px 18px 8px;display:flex;align-items:center;justify-content:space-between;}
+.ps-title{font-family:'Playfair Display',serif;font-size:.95rem;font-weight:700;color:var(--text);}
+.ps-badge{font-size:.6rem;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--indigo-bg);color:var(--indigo);border:1px solid var(--indigo-bdr);}
+.ps-row{padding:6px 18px;display:flex;align-items:flex-start;gap:10px;border-top:1px solid var(--border);}
+.ps-icon{font-size:15px;flex-shrink:0;margin-top:1px;}
+.ps-text{font-size:12px;color:var(--text2);line-height:1.5;flex:1;}
+.ps-text strong{color:var(--text);font-weight:700;}
+/* ── ACHIEVEMENTS ── */
+.ach-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 20px;margin-bottom:10px;}
+.ach-card{background:var(--surf);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 10px;text-align:center;position:relative;transition:transform .15s var(--spring);}
+.ach-card.unlocked{border-color:var(--amber-bdr);background:var(--amber-bg);}
+.ach-card.locked{opacity:.4;}
+.ach-icon{font-size:1.6rem;display:block;margin-bottom:4px;}
+.ach-name{font-size:.65rem;font-weight:700;color:var(--text2);}
+.ach-card.unlocked .ach-name{color:var(--amber);}
+.ach-desc{font-size:.58rem;color:var(--text3);margin-top:2px;line-height:1.4;}
+/* ── DIAGNOSTICS ── */
+.diag-panel{margin:0 20px 10px;background:var(--surf);border:1px solid var(--border2);border-radius:var(--r-sm);padding:14px;font-family:'DM Mono',monospace;font-size:.65rem;color:var(--teal);line-height:1.8;display:none;}
+.diag-panel.show{display:block;}
+.diag-row{display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:2px 0;}
+.diag-row:last-child{border-bottom:none;}
+@media(min-width:768px) and (hover:hover) and (pointer:fine){.ps-card{margin:0 24px 12px;}.ach-grid{padding:0 24px;}.diag-panel{margin:0 24px 10px;}}
 #update-banner{
   position:fixed;bottom:calc(var(--nav-h) + var(--sab) + 14px);
   left:50%;transform:translateX(-50%) translateY(20px);
@@ -1066,6 +1090,9 @@ select option{background:var(--surf2);}
         <div class="ov-card"><div class="ov-card-title">Pending Activities</div><div id="ov-act-list"></div></div>
         <div class="ov-card"><div class="ov-card-title">Recent Study Sessions</div><div id="ov-sess-list"></div></div>
         <div class="ov-card"><div class="ov-card-title">Active Plans</div><div id="ov-plans-list"></div></div>
+        <div id="ps-summary-wrap"></div>
+        <div class="section-lbl">🏆 Achievements</div>
+        <div class="ach-grid" id="ach-grid"></div>
       </div>
 
       <!-- ─── STUDY & PLAN ─── -->
@@ -1384,6 +1411,14 @@ select option{background:var(--surf2);}
           </div>
           <div class="section-lbl">Storage Info</div>
           <div class="ov-card" style="margin-bottom:8px;"><div id="storage-info"></div></div>
+          <div class="section-lbl">🛠 Developer Diagnostics</div>
+          <div class="ov-card" style="margin-bottom:8px;">
+            <div class="backup-row">
+              <div class="backup-txt"><div class="backup-title">Runtime Diagnostics</div><div class="backup-sub">Cache sizes, sync state, lifecycle events</div></div>
+              <button class="btn btn-ghost" style="font-size:12px;min-height:36px;padding:0 12px;" onclick="toggleDiag()">Show</button>
+            </div>
+            <div class="diag-panel" id="diag-panel"></div>
+          </div>
         </div>
       </div>
 
@@ -1468,14 +1503,14 @@ function hideSplash(){
 }
 /* Failsafe: only on fresh start */
 if(_isFreshStart)setTimeout(()=>{hideSplash();['main-app','auth-screen'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.add('pl-ready');});},12000);
-const APP_VERSION = '2.9.7';
+const APP_VERSION = '2.9.8';
 const CHANGELOG = [
-  'Crash reporter: retry limit (max 5) added',
-  'XSS fix: single-quote escaping in esc()',
-  'Timer leak fixed on logout',
-  'Splash animation GPU-accelerated',
-  'Settings storage calc async (no jank)',
-  'Lifecycle-aware freeze telemetry'
+  'Day-end AI-style Productivity Summary',
+  'Achievement Engine (12 unlockable badges)',
+  'Runtime Diagnostics Panel in Settings',
+  'Critical auth isolation fix (no cross-account leak)',
+  'mergeArrayById preferLocal bug fixed',
+  'Habit UI redesigned to match app style'
 ];
 
 let _swWaiting = null;
@@ -1695,7 +1730,7 @@ function fmtKey(k){if(!k)return '';const d=keyToDate(k);return ['Sun','Mon','Tue
 function loadMeta(){try{const s=localStorage.getItem(META_K);if(s){meta=JSON.parse(s);if(!meta.plans)meta.plans=[];if(!meta.courses||!meta.courses.length)meta.courses=['CSEB'];else if(!meta.courses.includes('CSEB'))meta.courses.unshift('CSEB');if(meta.autoCarryActivities===undefined)meta.autoCarryActivities=false;if(meta.autoCarryHabits===undefined)meta.autoCarryHabits=false;}}catch(e){}}
 function saveMeta(){try{localStorage.setItem(META_K,JSON.stringify(meta));}catch(e){showStorageError();}_syncMeta();}
 function loadDay(k){try{const s=localStorage.getItem(STORE+k);if(s){data=JSON.parse(s);if(!data.habits)data.habits=[];}else{data=emptyDay();const prev=getDayData(addDays(k,-1));if(prev&&prev.goal)data.goal=JSON.parse(JSON.stringify(prev.goal));if(meta.autoCarryActivities&&prev&&prev.activities){const unfinished=prev.activities.filter(a=>!a.done);unfinished.forEach(a=>data.activities.push({...a,id:uid(),done:false,carriedFrom:addDays(k,-1)}));}}}catch(e){data=emptyDay();}}
-function saveDay(secs){try{localStorage.setItem(STORE+currentKey,JSON.stringify(data));}catch(e){showStorageError();return;}invalidateDayKeysCache();_invalidateDayDataCache(currentKey);_invalidatePlanCache();_invalidateWatchCache();render(secs);updateStreak();_syncDay(currentKey,data);}
+function saveDay(secs){try{localStorage.setItem(STORE+currentKey,JSON.stringify(data));}catch(e){showStorageError();return;}invalidateDayKeysCache();_invalidateDayDataCache(currentKey);_invalidatePlanCache();_invalidateWatchCache();_invalidateAchCache();render(secs);updateStreak();_syncDay(currentKey,data);}
 const _dayDataCache=new Map();
 function getDayData(k){
   if(_dayDataCache.has(k))return _dayDataCache.get(k);
@@ -1818,6 +1853,7 @@ function render(secs){
   if(all||has('journal'))restoreJournal();
   if(has('score')||has('overview')||all)renderScore();
   if((has('sessions')||has('plans')||all)&&studyActive)renderStudyStatBar();
+  if(all&&homeActive){renderProductivitySummary();renderAchievements();}
   if(all&&studyActive&&_subActive('sp-study')){renderGoalPlanDropdown();updateLinkedPlanPreview();}
 }
 let _ovTimer=null;
@@ -1825,6 +1861,82 @@ const _renderOverviewDebounced=()=>{clearTimeout(_ovTimer);_ovTimer=setTimeout(r
 function renderAll(){render(null);}
 
 let _schedInterval=null;
+/* ── PRODUCTIVITY SUMMARY ── */
+function renderProductivitySummary(){
+  const el=document.getElementById('ps-summary-wrap');if(!el)return;
+  const hrs=sumHours(data.sessions),goal=data.goal.hours||6;
+  const done=data.activities.filter(a=>!['sleep','workout'].includes(a.category)&&a.done).length;
+  const total=data.activities.filter(a=>!['sleep','workout'].includes(a.category)).length;
+  const{score}=calcScore();
+  const h=new Date().getHours();
+  if(h<15&&score<10){el.innerHTML='';return;}
+  const ins=[];
+  if(hrs>=goal)ins.push({i:'📚',t:`<strong>Goal crushed!</strong> ${hrs}h studied — ${(hrs-goal).toFixed(1)}h above target.`});
+  else if(hrs>0)ins.push({i:'📚',t:`<strong>${hrs}h logged.</strong> ${(goal-hrs).toFixed(1)}h more to hit ${goal}h goal.`});
+  else ins.push({i:'📚',t:`<strong>No sessions yet.</strong> ${goal}h goal is waiting.`});
+  if(total>0){const r=Math.round((done/total)*100);ins.push({i:r>=80?'✅':'⏳',t:r===100?`<strong>All ${total} tasks done!</strong> Perfect execution.`:`<strong>${done}/${total} tasks</strong> completed (${r}%).`});}
+  const slH=(data.activities||[]).filter(a=>a.category==='sleep').reduce((s,a)=>s+(a.duration||0),0);
+  if(slH>0&&slH<6)ins.push({i:'😴',t:`<strong>Low sleep (${slH}h)</strong> — may impact focus and retention.`});
+  else if(slH>=7)ins.push({i:'😴',t:`<strong>Well rested (${slH}h)</strong> — great for memory consolidation.`});
+  if(data.mood==='Great'&&score>=70)ins.push({i:'🌟',t:`<strong>Great mood + strong output</strong> — your optimal state.`});
+  else if(data.mood==='Tired'&&hrs>0)ins.push({i:'💪',t:`<strong>Worked through tiredness</strong> — that's discipline.`});
+  const grade=score>=90?'Outstanding 🏆':score>=75?'Excellent 🔥':score>=60?'Solid 💪':score>=40?'Building 🌱':'Early start ☕';
+  el.innerHTML=`<div class="ps-card"><div class="ps-head"><div class="ps-title">📊 Day Summary</div><div class="ps-badge">${grade} · ${score}/100</div></div>${ins.map(x=>`<div class="ps-row"><div class="ps-icon">${x.i}</div><div class="ps-text">${x.t}</div></div>`).join('')}</div>`;
+}
+
+/* ── ACHIEVEMENTS ── */
+const ACHIEVEMENTS=[
+  {id:'first_session',icon:'📖',name:'First Session',desc:'Log first study session',check:()=>getAllDayKeys().some(k=>{const d=getDayData(k);return d&&(d.sessions||[]).length>0;})},
+  {id:'streak_3',icon:'🔥',name:'3-Day Streak',desc:'3 days in a row',check:()=>meta.streak>=3},
+  {id:'streak_7',icon:'⚡',name:'Week Warrior',desc:'7-day streak',check:()=>meta.streak>=7},
+  {id:'streak_30',icon:'🏆',name:'Month Master',desc:'30-day streak',check:()=>meta.streak>=30},
+  {id:'goal_hit',icon:'🎯',name:'Goal Crusher',desc:'Hit daily study goal',check:()=>sumHours(data.sessions)>=data.goal.hours&&data.goal.hours>0},
+  {id:'perfect_day',icon:'💎',name:'Perfect Day',desc:'Score 90+ in one day',check:()=>calcScore().score>=90},
+  {id:'planner_5',icon:'📋',name:'Planner Pro',desc:'Create 5 plans',check:()=>meta.plans.length>=5},
+  {id:'habit_7',icon:'🔄',name:'Habit Builder',desc:'Track habits 7+ days',check:()=>getAllDayKeys().filter(k=>{const d=getDayData(k);return d&&(d.habits||[]).length>0;}).length>=7},
+  {id:'sleep_7',icon:'😴',name:'Sleep Tracker',desc:'Log sleep 7+ days',check:()=>getAllDayKeys().filter(k=>{const d=getDayData(k);return d&&(d.activities||[]).some(a=>a.category==='sleep');}).length>=7},
+  {id:'workout_5',icon:'💪',name:'Fit Focused',desc:'Log 5 workouts',check:()=>getAllDayKeys().reduce((n,k)=>{const d=getDayData(k);return n+((d?d.activities||[]:[])).filter(a=>a.category==='workout').length;},0)>=5},
+  {id:'media_10',icon:'🎬',name:'Critic',desc:'Track 10 media titles',check:()=>getAllWatchItems().length>=10},
+  {id:'days_50',icon:'🌟',name:'Veteran',desc:'50+ days tracked',check:()=>getAllDayKeys().length>=50},
+];
+let _achCache={};
+function _invalidateAchCache(){_achCache={};}
+function renderAchievements(){
+  const el=document.getElementById('ach-grid');if(!el)return;
+  el.innerHTML=ACHIEVEMENTS.map(a=>{
+    if(_achCache[a.id]===undefined)try{_achCache[a.id]=a.check();}catch(e){_achCache[a.id]=false;}
+    const u=_achCache[a.id];
+    return `<div class="ach-card ${u?'unlocked':'locked'}"><span class="ach-icon">${a.icon}</span><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc}</div></div>`;
+  }).join('');
+}
+
+/* ── DIAGNOSTICS ── */
+function toggleDiag(){
+  const p=document.getElementById('diag-panel');if(!p)return;
+  const btn=p.previousElementSibling?.querySelector('button');
+  p.classList.toggle('show');
+  if(btn)btn.textContent=p.classList.contains('show')?'Hide':'Show';
+  if(!p.classList.contains('show'))return;
+  const qSize=window.debugCrashReporter?window.debugCrashReporter.getQueue().length:0;
+  p.innerHTML=[
+    ['Version',APP_VERSION],
+    ['UID',_currentUser?_currentUser.uid.slice(0,10)+'…':'none'],
+    ['Auth match',String(_authGuard())],
+    ['Days tracked',getAllDayKeys().length],
+    ['Day cache',_dayDataCache.size+' entries'],
+    ['Watch cache',_watchItemsCache?_watchItemsCache.length+' items':'empty'],
+    ['Plan cache',Object.keys(_planSessionsCache).length+' plans'],
+    ['Streak',meta.streak+'d'],
+    ['Crash queue',qSize+' pending'],
+    ['Active plans',meta.plans.filter(q=>daysUntil(q.date)>=0).length],
+    ['SW ready',String('serviceWorker' in navigator&&!!_swRegistration)],
+    ['AppCheck',String(!!window._appCheckReady)],
+    ['Online',String(navigator.onLine)],
+    ['PWA',String(window.matchMedia('(display-mode:standalone)').matches)],
+    ['Memory',performance?.memory?Math.round(performance.memory.usedJSHeapSize/1048576)+'MB':'n/a'],
+  ].map(([k,v])=>`<div class="diag-row"><span>${k}</span><span style="color:var(--amber)">${v}</span></div>`).join('');
+}
+
 function _startSchedTick(){if(_schedInterval)return;_schedInterval=setInterval(()=>{if(document.visibilityState!=='visible')return;if(!data.schedule.length)return;const homeActive=document.getElementById('sec-home')?.classList.contains('active');const studySchedActive=document.getElementById('sec-studyplan')?.classList.contains('active')&&_subActive('sp-sched');if(homeActive)renderOverview();if(studySchedActive)renderSchedule();},60000);}
 function _stopSchedTick(){if(_schedInterval){clearInterval(_schedInterval);_schedInterval=null;}}
 
