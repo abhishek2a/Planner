@@ -893,21 +893,8 @@ select option{background:var(--surf2);}
 .ps-icon{font-size:15px;flex-shrink:0;margin-top:1px;}
 .ps-text{font-size:12px;color:var(--text2);line-height:1.5;flex:1;}
 .ps-text strong{color:var(--text);font-weight:700;}
-/* ── ACHIEVEMENTS ── */
-.ach-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 20px;margin-bottom:10px;}
-.ach-card{background:var(--surf);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 10px;text-align:center;position:relative;transition:transform .15s var(--spring);}
-.ach-card.unlocked{border-color:var(--amber-bdr);background:var(--amber-bg);}
-.ach-card.locked{opacity:.4;}
-.ach-icon{font-size:1.6rem;display:block;margin-bottom:4px;}
-.ach-name{font-size:.65rem;font-weight:700;color:var(--text2);}
-.ach-card.unlocked .ach-name{color:var(--amber);}
-.ach-desc{font-size:.58rem;color:var(--text3);margin-top:2px;line-height:1.4;}
-/* ── DIAGNOSTICS ── */
-.diag-panel{margin:0 20px 10px;background:var(--surf);border:1px solid var(--border2);border-radius:var(--r-sm);padding:14px;font-family:'DM Mono',monospace;font-size:.65rem;color:var(--teal);line-height:1.8;display:none;}
-.diag-panel.show{display:block;}
-.diag-row{display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:2px 0;}
-.diag-row:last-child{border-bottom:none;}
-@media(min-width:768px) and (hover:hover) and (pointer:fine){.ps-card{margin:0 24px 12px;}.ach-grid{padding:0 24px;}.diag-panel{margin:0 24px 10px;}}
+
+@media(min-width:768px) and (hover:hover) and (pointer:fine){.ps-card{margin:0 24px 12px;}}
 #update-banner{
   position:fixed;bottom:calc(var(--nav-h) + var(--sab) + 14px);
   left:50%;transform:translateX(-50%) translateY(20px);
@@ -1053,6 +1040,7 @@ select option{background:var(--surf2);}
             </div>
           </div>
         </div>
+        <div id="ps-summary-wrap"></div>
         <div class="section-lbl">How are you feeling?</div>
         <div class="mood-row">
           <button class="mood-btn" onclick="setMood('😴','Tired')" data-mood="Tired">😴 Tired</button>
@@ -1090,9 +1078,7 @@ select option{background:var(--surf2);}
         <div class="ov-card"><div class="ov-card-title">Pending Activities</div><div id="ov-act-list"></div></div>
         <div class="ov-card"><div class="ov-card-title">Recent Study Sessions</div><div id="ov-sess-list"></div></div>
         <div class="ov-card"><div class="ov-card-title">Active Plans</div><div id="ov-plans-list"></div></div>
-        <div id="ps-summary-wrap"></div>
-        <div class="section-lbl">🏆 Achievements</div>
-        <div class="ach-grid" id="ach-grid"></div>
+        
       </div>
 
       <!-- ─── STUDY & PLAN ─── -->
@@ -1411,10 +1397,6 @@ select option{background:var(--surf2);}
           </div>
           <div class="section-lbl">Storage Info</div>
           <div class="ov-card" style="margin-bottom:8px;"><div id="storage-info"></div></div>
-          <div class="section-lbl">🛠 Developer Diagnostics</div>
-          <div class="ov-card" style="margin-bottom:8px;">
-            <div class="backup-row">
-              <div class="backup-txt"><div class="backup-title">Runtime Diagnostics</div><div class="backup-sub">Cache sizes, sync state, lifecycle events</div></div>
               <button class="btn btn-ghost" style="font-size:12px;min-height:36px;padding:0 12px;" onclick="toggleDiag()">Show</button>
             </div>
             <div class="diag-panel" id="diag-panel"></div>
@@ -1503,14 +1485,13 @@ function hideSplash(){
 }
 /* Failsafe: only on fresh start */
 if(_isFreshStart)setTimeout(()=>{hideSplash();['main-app','auth-screen'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.add('pl-ready');});},12000);
-const APP_VERSION = '2.9.8';
+const APP_VERSION = '2.9.9';
 const CHANGELOG = [
-  'Day-end AI-style Productivity Summary',
-  'Achievement Engine (12 unlockable badges)',
-  'Runtime Diagnostics Panel in Settings',
-  'Critical auth isolation fix (no cross-account leak)',
-  'mergeArrayById preferLocal bug fixed',
-  'Habit UI redesigned to match app style'
+  'Day Summary placed below score card',
+  'Cleaner score grade labels',
+  'Auth isolation — no cross-account data leak',
+  'Session merge bug fixed (remote wins correctly)',
+  'Habit UI matches app style'
 ];
 
 let _swWaiting = null;
@@ -1730,7 +1711,7 @@ function fmtKey(k){if(!k)return '';const d=keyToDate(k);return ['Sun','Mon','Tue
 function loadMeta(){try{const s=localStorage.getItem(META_K);if(s){meta=JSON.parse(s);if(!meta.plans)meta.plans=[];if(!meta.courses||!meta.courses.length)meta.courses=['CSEB'];else if(!meta.courses.includes('CSEB'))meta.courses.unshift('CSEB');if(meta.autoCarryActivities===undefined)meta.autoCarryActivities=false;if(meta.autoCarryHabits===undefined)meta.autoCarryHabits=false;}}catch(e){}}
 function saveMeta(){try{localStorage.setItem(META_K,JSON.stringify(meta));}catch(e){showStorageError();}_syncMeta();}
 function loadDay(k){try{const s=localStorage.getItem(STORE+k);if(s){data=JSON.parse(s);if(!data.habits)data.habits=[];}else{data=emptyDay();const prev=getDayData(addDays(k,-1));if(prev&&prev.goal)data.goal=JSON.parse(JSON.stringify(prev.goal));if(meta.autoCarryActivities&&prev&&prev.activities){const unfinished=prev.activities.filter(a=>!a.done);unfinished.forEach(a=>data.activities.push({...a,id:uid(),done:false,carriedFrom:addDays(k,-1)}));}}}catch(e){data=emptyDay();}}
-function saveDay(secs){try{localStorage.setItem(STORE+currentKey,JSON.stringify(data));}catch(e){showStorageError();return;}invalidateDayKeysCache();_invalidateDayDataCache(currentKey);_invalidatePlanCache();_invalidateWatchCache();_invalidateAchCache();render(secs);updateStreak();_syncDay(currentKey,data);}
+function saveDay(secs){try{localStorage.setItem(STORE+currentKey,JSON.stringify(data));}catch(e){showStorageError();return;}invalidateDayKeysCache();_invalidateDayDataCache(currentKey);_invalidatePlanCache();_invalidateWatchCache();render(secs);updateStreak();_syncDay(currentKey,data);}
 const _dayDataCache=new Map();
 function getDayData(k){
   if(_dayDataCache.has(k))return _dayDataCache.get(k);
@@ -1853,7 +1834,7 @@ function render(secs){
   if(all||has('journal'))restoreJournal();
   if(has('score')||has('overview')||all)renderScore();
   if((has('sessions')||has('plans')||all)&&studyActive)renderStudyStatBar();
-  if(all&&homeActive){renderProductivitySummary();renderAchievements();}
+  if(all&&homeActive){renderProductivitySummary();}
   if(all&&studyActive&&_subActive('sp-study')){renderGoalPlanDropdown();updateLinkedPlanPreview();}
 }
 let _ovTimer=null;
@@ -1880,35 +1861,10 @@ function renderProductivitySummary(){
   else if(slH>=7)ins.push({i:'😴',t:`<strong>Well rested (${slH}h)</strong> — great for memory consolidation.`});
   if(data.mood==='Great'&&score>=70)ins.push({i:'🌟',t:`<strong>Great mood + strong output</strong> — your optimal state.`});
   else if(data.mood==='Tired'&&hrs>0)ins.push({i:'💪',t:`<strong>Worked through tiredness</strong> — that's discipline.`});
-  const grade=score>=90?'Outstanding 🏆':score>=75?'Excellent 🔥':score>=60?'Solid 💪':score>=40?'Building 🌱':'Early start ☕';
+  const grade=score>=90?'Outstanding 🏆':score>=75?'Excellent 🔥':score>=60?'Solid 💪':'Building 🌱';
   el.innerHTML=`<div class="ps-card"><div class="ps-head"><div class="ps-title">📊 Day Summary</div><div class="ps-badge">${grade} · ${score}/100</div></div>${ins.map(x=>`<div class="ps-row"><div class="ps-icon">${x.i}</div><div class="ps-text">${x.t}</div></div>`).join('')}</div>`;
 }
 
-/* ── ACHIEVEMENTS ── */
-const ACHIEVEMENTS=[
-  {id:'first_session',icon:'📖',name:'First Session',desc:'Log first study session',check:()=>getAllDayKeys().some(k=>{const d=getDayData(k);return d&&(d.sessions||[]).length>0;})},
-  {id:'streak_3',icon:'🔥',name:'3-Day Streak',desc:'3 days in a row',check:()=>meta.streak>=3},
-  {id:'streak_7',icon:'⚡',name:'Week Warrior',desc:'7-day streak',check:()=>meta.streak>=7},
-  {id:'streak_30',icon:'🏆',name:'Month Master',desc:'30-day streak',check:()=>meta.streak>=30},
-  {id:'goal_hit',icon:'🎯',name:'Goal Crusher',desc:'Hit daily study goal',check:()=>sumHours(data.sessions)>=data.goal.hours&&data.goal.hours>0},
-  {id:'perfect_day',icon:'💎',name:'Perfect Day',desc:'Score 90+ in one day',check:()=>calcScore().score>=90},
-  {id:'planner_5',icon:'📋',name:'Planner Pro',desc:'Create 5 plans',check:()=>meta.plans.length>=5},
-  {id:'habit_7',icon:'🔄',name:'Habit Builder',desc:'Track habits 7+ days',check:()=>getAllDayKeys().filter(k=>{const d=getDayData(k);return d&&(d.habits||[]).length>0;}).length>=7},
-  {id:'sleep_7',icon:'😴',name:'Sleep Tracker',desc:'Log sleep 7+ days',check:()=>getAllDayKeys().filter(k=>{const d=getDayData(k);return d&&(d.activities||[]).some(a=>a.category==='sleep');}).length>=7},
-  {id:'workout_5',icon:'💪',name:'Fit Focused',desc:'Log 5 workouts',check:()=>getAllDayKeys().reduce((n,k)=>{const d=getDayData(k);return n+((d?d.activities||[]:[])).filter(a=>a.category==='workout').length;},0)>=5},
-  {id:'media_10',icon:'🎬',name:'Critic',desc:'Track 10 media titles',check:()=>getAllWatchItems().length>=10},
-  {id:'days_50',icon:'🌟',name:'Veteran',desc:'50+ days tracked',check:()=>getAllDayKeys().length>=50},
-];
-let _achCache={};
-function _invalidateAchCache(){_achCache={};}
-function renderAchievements(){
-  const el=document.getElementById('ach-grid');if(!el)return;
-  el.innerHTML=ACHIEVEMENTS.map(a=>{
-    if(_achCache[a.id]===undefined)try{_achCache[a.id]=a.check();}catch(e){_achCache[a.id]=false;}
-    const u=_achCache[a.id];
-    return `<div class="ach-card ${u?'unlocked':'locked'}"><span class="ach-icon">${a.icon}</span><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc}</div></div>`;
-  }).join('');
-}
 
 /* ── DIAGNOSTICS ── */
 function toggleDiag(){
@@ -2004,7 +1960,7 @@ function sumHours(sessions){return Math.round(sessions.reduce((s,x)=>s+x.duratio
 
 function calcScoreFor(d){const hrs=sumHours(d.sessions||[]),goal=(d.goal&&d.goal.hours)||6;const studyPct=Math.min(1,hrs/goal),tasksAll=(d.activities||[]).length,tasksDone=(d.activities||[]).filter(a=>a.done).length;const taskPct=tasksAll?tasksDone/tasksAll:0,ratingPct=(d.rating||0)/5;return{score:Math.round(studyPct*40+taskPct*35+ratingPct*25),studyPct,taskPct,ratingPct};}
 function calcScore(){const hrs=sumHours(data.sessions),goal=data.goal.hours||6;const studyPct=Math.min(1,hrs/goal),tasksAll=data.activities.length,tasksDone=data.activities.filter(a=>a.done).length;const taskPct=tasksAll?tasksDone/tasksAll:0,ratingPct=(data.rating||0)/5;return{score:Math.round(studyPct*40+taskPct*35+ratingPct*25),studyPct,taskPct,ratingPct};}
-function renderScore(){const{score,studyPct,taskPct,ratingPct}=calcScore();const ring=document.getElementById('score-ring-dash');ring.style.strokeDashoffset=(188.5*(1-score/100)).toFixed(1);ring.style.stroke=score>=80?'var(--green)':score>=60?'var(--teal)':score>=40?'var(--amber)':'var(--rose)';document.getElementById('score-num').textContent=score;const[label,msg]=score>=90?['Outstanding 🏆','Absolutely crushing it today!']:score>=75?['Excellent 🔥','Strong day! Push a bit more.']:score>=60?['On Track 💪','Solid progress. Keep pushing.']:score>=40?['Getting There 🌱','Focus on habits or tasks to boost.']:score>0?['Early Days ☕','Log more activity to build momentum.']:['New Day ✨','Log a session or complete a task to begin.'];document.getElementById('score-label').textContent=label;document.getElementById('score-msg').textContent=msg;const set=(id,vid,p)=>{const el=document.getElementById(id);const vel=document.getElementById(vid);if(el)el.style.width=(p*100).toFixed(0)+'%';if(vel)vel.textContent=Math.round(p*100)+'%';};set('sb-study','sv-study',studyPct);set('sb-tasks','sv-tasks',taskPct);set('sb-rating','sv-rating',ratingPct);}
+function renderScore(){const{score,studyPct,taskPct,ratingPct}=calcScore();const ring=document.getElementById('score-ring-dash');ring.style.strokeDashoffset=(188.5*(1-score/100)).toFixed(1);ring.style.stroke=score>=80?'var(--green)':score>=60?'var(--teal)':score>=40?'var(--amber)':'var(--rose)';document.getElementById('score-num').textContent=score;const[label,msg]=score>=90?['Outstanding 🏆','Absolutely crushing it today!']:score>=75?['Excellent 🔥','Strong day! Push a bit more.']:score>=60?['On Track 💪','Solid progress. Keep pushing.']:score>=40?['Getting There 🌱','Focus on habits or tasks to boost.']:['New Day ✨','Log a session or complete a task to begin.'];document.getElementById('score-label').textContent=label;document.getElementById('score-msg').textContent=msg;const set=(id,vid,p)=>{const el=document.getElementById(id);const vel=document.getElementById(vid);if(el)el.style.width=(p*100).toFixed(0)+'%';if(vel)vel.textContent=Math.round(p*100)+'%';};set('sb-study','sv-study',studyPct);set('sb-tasks','sv-tasks',taskPct);set('sb-rating','sv-rating',ratingPct);}
 
 function addSession(){const sub=document.getElementById('sess-subject').value.trim(),durRaw=document.getElementById('sess-dur').value,dur=parseFloat(durRaw);if(!sub){alert('⚠️ Enter a subject name.');return;}if(!durRaw||isNaN(dur)||dur<=0){alert('⚠️ Enter a valid duration (e.g. 1.5).');return;}if(dur>24){alert('⚠️ Duration cannot exceed 24 hours.');return;}const planId=_selectedPlanId||null;data.sessions.push({id:uid(),subject:sub,duration:dur,time:getTime('tp-sess'),planId,notes:document.getElementById('sess-notes').value.trim()});data.sessions.sort((a,b)=>{if(!a.time&&!b.time)return 0;if(!a.time)return 1;if(!b.time)return-1;return a.time.localeCompare(b.time);});document.getElementById('sess-subject').value='';document.getElementById('sess-dur').value='';document.getElementById('sess-notes').value='';resetTP('tp-sess');saveDay(['sessions','overview','score']);renderPlanQuickPick();if(document.getElementById('sp-plans')&&document.getElementById('sp-plans').style.display!=='none')renderPlans();}
 function isOverlap(start,end,excludeId){const newEnd=end||start;return data.schedule.some(s=>{if(excludeId&&s.id===excludeId)return false;const sEnd=s.end||s.start;return!(newEnd<=s.start||start>=sEnd);});}
