@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#040403">
@@ -1673,9 +1673,10 @@ function switchAuthTab(tab){document.getElementById('tab-login').classList.toggl
 function showAuthErr(msg){const el=document.getElementById('auth-err');el.textContent=msg;el.classList.add('show');}
 function clearAuthErr(){const el=document.getElementById('auth-err');el.textContent='';el.classList.remove('show');}
 function setAuthBusy(busy){document.getElementById('btn-login').disabled=busy;document.getElementById('btn-signup').disabled=busy;}
-function fmtFirebaseErr(code){const map={'auth/user-not-found':'No account found with that email.','auth/wrong-password':'Incorrect password.','auth/invalid-email':'Invalid email address.','auth/email-already-in-use':'An account with that email already exists.','auth/weak-password':'Password must be at least 6 characters.','auth/too-many-requests':'Too many attempts. Please try again later.','auth/network-request-failed':'Network error. Check your connection.','auth/invalid-credential':'Incorrect email or password.'};return map[code]||'Something went wrong. Please try again.';}
-function doLogin(){clearAuthErr();const email=document.getElementById('li-email').value.trim(),pass=document.getElementById('li-pass').value;if(!email||!pass){showAuthErr('Please fill in all fields.');return;}setAuthBusy(true);window._fbLogin(email,pass).then(()=>setAuthBusy(false)).catch(err=>{setAuthBusy(false);showAuthErr(fmtFirebaseErr(err.code));});}
-function doSignup(){clearAuthErr();const name=document.getElementById('su-name').value.trim(),email=document.getElementById('su-email').value.trim(),pass=document.getElementById('su-pass').value;if(!email||!pass){showAuthErr('Email and password are required.');return;}if(pass.length<6){showAuthErr('Password must be at least 6 characters.');return;}setAuthBusy(true);window._fbSignup(email,pass,name).then(()=>setAuthBusy(false)).catch(err=>{setAuthBusy(false);showAuthErr(fmtFirebaseErr(err.code));});}
+function fmtFirebaseErr(code){const map={'auth/user-not-found':'No account found with that email.','auth/wrong-password':'Incorrect password.','auth/invalid-email':'Invalid email address.','auth/email-already-in-use':'An account with that email already exists.','auth/weak-password':'Password must be at least 6 characters.','auth/too-many-requests':'Too many attempts. Please try again later.','auth/network-request-failed':'Network error. Check your connection.','auth/invalid-credential':'Incorrect email or password.'};return map[code||'']||'Something went wrong. Please try again.';}
+function _fmtErr(err){return fmtFirebaseErr(err?.code||err?.message||'');}
+function doLogin(){clearAuthErr();const email=document.getElementById('li-email').value.trim(),pass=document.getElementById('li-pass').value;if(!email||!pass){showAuthErr('Please fill in all fields.');return;}setAuthBusy(true);window._fbLogin(email,pass).then(()=>setAuthBusy(false)).catch(err=>{setAuthBusy(false);showAuthErr(_fmtErr(err));});}
+function doSignup(){clearAuthErr();const name=document.getElementById('su-name').value.trim(),email=document.getElementById('su-email').value.trim(),pass=document.getElementById('su-pass').value;if(!email||!pass){showAuthErr('Email and password are required.');return;}if(pass.length<6){showAuthErr('Password must be at least 6 characters.');return;}setAuthBusy(true);window._fbSignup(email,pass,name).then(()=>setAuthBusy(false)).catch(err=>{setAuthBusy(false);showAuthErr(_fmtErr(err));});}
 function doLogout(){if(!confirm('Sign out of Planner?'))return;window._fbLogout().then(()=>{_currentUser=null;hardResetRuntime();showAuthScreen();});}
 document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const ls=document.getElementById('auth-screen');if(ls&&!ls.classList.contains('hidden')){const tab=document.getElementById('tab-login').classList.contains('active');if(tab)doLogin();else doSignup();}});
 
@@ -1687,9 +1688,9 @@ function openChangeUsername(){
   document.getElementById('edit-actions').innerHTML=`<button class="btn btn-primary" onclick="saveChangeUsername()">Update Name</button><button class="btn btn-ghost" onclick="closeEdit()">Cancel</button>`;
   openEdit();
 }
-function saveChangeUsername(){const newName=document.getElementById('ei-new-name').value.trim();if(!newName){showAcctEditErr('Name cannot be empty.');return;}const btn=document.querySelector('#edit-actions .btn-primary');btn.disabled=true;btn.textContent='Updating…';window._fbUpdateDisplayName(_currentUser,newName).then(()=>{const nameEl=document.getElementById('acct-name');if(nameEl)nameEl.textContent=newName;closeEdit();}).catch(err=>{btn.disabled=false;btn.textContent='Update Name';showAcctEditErr(fmtFirebaseErr(err.code));});}
+function saveChangeUsername(){const newName=document.getElementById('ei-new-name').value.trim();if(!newName){showAcctEditErr('Name cannot be empty.');return;}const btn=document.querySelector('#edit-actions .btn-primary');btn.disabled=true;btn.textContent='Updating…';window._fbUpdateDisplayName(_currentUser,newName).then(()=>{const nameEl=document.getElementById('acct-name');if(nameEl)nameEl.textContent=newName;closeEdit();}).catch(err=>{btn.disabled=false;btn.textContent='Update Name';showAcctEditErr(_fmtErr(err));});}
 function openChangePassword(){_eid='change-password';_etype='account-password';document.getElementById('edit-sheet-title').textContent='Change Password';document.getElementById('edit-sheet-body').innerHTML=`<div class="form-group"><label class="field-label">Current Password</label><input type="password" id="ei-cur-pass" placeholder="Your current password" autocomplete="current-password"></div><div class="form-group"><label class="field-label">New Password <span style="color:var(--text3);font-weight:400;">(min 6 chars)</span></label><input type="password" id="ei-new-pass" placeholder="New password" autocomplete="new-password"></div><div class="form-group"><label class="field-label">Confirm New Password</label><input type="password" id="ei-conf-pass" placeholder="Repeat new password" autocomplete="new-password"></div><div id="acct-edit-err" style="font-size:12.5px;color:var(--rose);background:var(--rose-bg);border:1px solid var(--rose-bdr);border-radius:var(--r-xs);padding:10px 14px;display:none;line-height:1.5;margin-top:10px;"></div>`;document.getElementById('edit-actions').innerHTML=`<button class="btn btn-primary" onclick="saveChangePassword()">Change Password</button><button class="btn btn-ghost" onclick="closeEdit()">Cancel</button>`;openEdit();}
-function saveChangePassword(){const cur=document.getElementById('ei-cur-pass').value,nw=document.getElementById('ei-new-pass').value,conf=document.getElementById('ei-conf-pass').value;if(!cur||!nw||!conf){showAcctEditErr('All fields are required.');return;}if(nw.length<6){showAcctEditErr('New password must be at least 6 characters.');return;}if(nw!==conf){showAcctEditErr('New passwords do not match.');return;}const btn=document.querySelector('#edit-actions .btn-primary');btn.disabled=true;btn.textContent='Updating…';window._fbChangePassword(_currentUser,cur,nw).then(()=>{closeEdit();setTimeout(()=>alert('✓ Password changed successfully.'),200);}).catch(err=>{btn.disabled=false;btn.textContent='Change Password';showAcctEditErr(fmtFirebaseErr(err.code));});}
+function saveChangePassword(){const cur=document.getElementById('ei-cur-pass').value,nw=document.getElementById('ei-new-pass').value,conf=document.getElementById('ei-conf-pass').value;if(!cur||!nw||!conf){showAcctEditErr('All fields are required.');return;}if(nw.length<6){showAcctEditErr('New password must be at least 6 characters.');return;}if(nw!==conf){showAcctEditErr('New passwords do not match.');return;}const btn=document.querySelector('#edit-actions .btn-primary');btn.disabled=true;btn.textContent='Updating…';window._fbChangePassword(_currentUser,cur,nw).then(()=>{closeEdit();setTimeout(()=>alert('✓ Password changed successfully.'),200);}).catch(err=>{btn.disabled=false;btn.textContent='Change Password';showAcctEditErr(_fmtErr(err));});}
 function showAcctEditErr(msg){const el=document.getElementById('acct-edit-err');if(el){el.textContent=msg;el.style.display='block';}}
 
 let STORE='dp6_day_', META_K='dp6_meta';
@@ -1722,20 +1723,25 @@ function invalidateDayKeysCache(){_dayKeysCache=null;}
 let _storageWarned=false;
 function showStorageError(){if(_storageWarned)return;_storageWarned=true;alert('⚠️ Storage full or unavailable.');}
 let _streakLastCalc='';
+function _dayHasActivity(d){
+  if(!d)return false;
+  if((d.sessions||[]).length>0)return true;
+  if((d.activities||[]).some(a=>a.done||a.category==='sleep'||a.category==='workout'))return true;
+  if((d.habits||[]).some(h=>h.done))return true;
+  return false;
+}
 function updateStreak(force){
   const today=todayKey();
-  if(!force&&_streakLastCalc===today&&meta.streak!==undefined){_applyStreak(meta.streak);return;}
+  if(!force&&_streakLastCalc===today&&meta.streak!==undefined&&meta.streak>0){_applyStreak(meta.streak);return;}
   setTimeout(()=>{
     let streak=0,check=today;
     for(let i=0;i<365;i++){
-      const d=getDayData(check);
-      if(d&&((d.sessions||[]).length>0||(d.activities||[]).some(a=>a.done))){streak++;check=addDays(check,-1);}
+      if(_dayHasActivity(check===today?data:getDayData(check))){streak++;check=addDays(check,-1);}
       else break;
     }
     meta.streak=streak;_streakLastCalc=today;
-    /* Persist streak to cloud immediately — don't debounce */
     try{localStorage.setItem(META_K,JSON.stringify(meta));}catch(e){}
-    if(_currentUser)window._fbSaveMeta(_currentUser.uid,meta).catch(()=>{});
+    if(_authGuard())window._fbSaveMeta(_currentUser.uid,meta).catch(()=>{});
     _applyStreak(streak);
   },0);
 }
@@ -1975,8 +1981,9 @@ function calcSleepDur(){
   const s=getTime('tp-sleep-start'),e=getTime('tp-sleep-end');
   if(!s||!e)return;
   let sm=timeToMin(s),em=timeToMin(e);
-  if(em<=sm)em+=1440;
-  document.getElementById('sleep-dur').value=Math.round((em-sm)/60*4)/4||'';
+  if(em<sm)em+=1440;/* overnight */else if(em===sm)em+=1440;/* same time = 24h edge-case → don't allow */
+  const d=Math.round((em-sm)/60*4)/4;
+  document.getElementById('sleep-dur').value=d>0?d:'';
 }
 function timeToMin(t){const[h,m]=t.split(':');return +h*60+ +m;}
 function minToFmt(m){const h=Math.floor(m/60)%24,mn=m%60;return(h%12||12)+':'+(mn<10?'0'+mn:mn)+(h>=12?' PM':' AM');}
@@ -2005,9 +2012,9 @@ function calcWorkoutDur(){
   const s=getTime('tp-workout-time'),e=getTime('tp-workout-end');
   if(!s||!e)return;
   let sm=timeToMin(s),em=timeToMin(e);
-  if(em<=sm)em+=1440;
+  if(em<sm)em+=1440;
   const d=Math.round((em-sm)/60*4)/4;
-  if(d>=0)document.getElementById('workout-dur').value=d;
+  document.getElementById('workout-dur').value=d>0?d:'';
 }
 function addWorkout(){
   const start=getTime('tp-workout-time'),end=getTime('tp-workout-end');
@@ -2456,8 +2463,8 @@ function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user
   function _key(msg,line){return (msg||'')+'|'+(line||'');}
 
   function _send(report){
-    if(!window._fbCrashReport){_queue.push(report);return;}
-    if(!navigator.onLine){_queue.push(report);return;}
+    if(!window._fbCrashReport){if(_queue.length<50)_queue.push(report);return;}
+    if(!navigator.onLine){if(_queue.length<50)_queue.push(report);return;}
 
     Promise.resolve().then(()=>window._fbCrashReport(report)).catch(()=>{});
   }
