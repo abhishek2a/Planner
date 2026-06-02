@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#040403">
@@ -323,9 +323,9 @@ body{font-family:-apple-system,'DM Sans',sans-serif;background:var(--bg);color:v
   z-index:50;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
   transform:translateZ(0);
 }
-.header-title{font-family:'Playfair Display',serif;font-size:1.55rem;font-weight:700;letter-spacing:-0.03em;line-height:1;}
+.header-title{font-family:'Playfair Display',serif;font-size:1.55rem;font-weight:700;letter-spacing:-0.03em;line-height:0.95;}
 .header-title span{color:var(--amber);}
-.header-sub{font-size:0.68rem;color:var(--text3);margin-top:5px;line-height:1.35;max-width:220px;}
+.header-sub{font-size:0.68rem;color:var(--text3);margin-top:2px;line-height:1.2;max-width:220px;}
 .header-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
 .header-top-row{display:flex;align-items:center;gap:8px;}
 .date-pill{
@@ -1325,7 +1325,7 @@ select option{background:var(--surf2);}
             <div class="account-hero-name" id="acct-name">—</div>
             <div class="account-hero-email" id="acct-email">—</div>
             <div class="account-hero-pills">
-              <div class="account-hero-pill ahp-green"><span>●</span><span id="acct-streak">🔥 0 days</span></div>
+              <div class="account-hero-pill ahp-green" id="acct-streak-pill" style="display:none;align-items:center;gap:4px;"></div>
               <div class="account-hero-pill ahp-rose" id="acct-sync-pill">☁️ Not synced</div>
             </div>
             <div class="account-hero-btns">
@@ -1708,7 +1708,7 @@ function fmtKey(k){if(!k)return '';const d=keyToDate(k);return ['Sun','Mon','Tue
 function loadMeta(){try{const s=localStorage.getItem(META_K);if(s){meta=JSON.parse(s);if(!meta.plans)meta.plans=[];if(!meta.courses||!meta.courses.length)meta.courses=['CSEB'];else if(!meta.courses.includes('CSEB'))meta.courses.unshift('CSEB');if(meta.autoCarryActivities===undefined)meta.autoCarryActivities=false;if(meta.autoCarryHabits===undefined)meta.autoCarryHabits=false;}}catch(e){}}
 function saveMeta(){try{localStorage.setItem(META_K,JSON.stringify(meta));}catch(e){showStorageError();}_syncMeta();}
 function loadDay(k){try{const s=localStorage.getItem(STORE+k);if(s){data=JSON.parse(s);if(!data.habits)data.habits=[];}else{data=emptyDay();const prev=getDayData(addDays(k,-1));if(prev&&prev.goal)data.goal=JSON.parse(JSON.stringify(prev.goal));if(meta.autoCarryActivities&&prev&&prev.activities){const unfinished=prev.activities.filter(a=>!a.done);unfinished.forEach(a=>data.activities.push({...a,id:uid(),done:false,carriedFrom:addDays(k,-1)}));}}}catch(e){data=emptyDay();}}
-function saveDay(secs){try{localStorage.setItem(STORE+currentKey,JSON.stringify(data));}catch(e){showStorageError();return;}invalidateDayKeysCache();_invalidateDayDataCache(currentKey);_invalidatePlanCache();_invalidateWatchCache();render(secs);updateStreak();_syncDay(currentKey,data);}
+function saveDay(secs){try{localStorage.setItem(STORE+currentKey,JSON.stringify(data));}catch(e){showStorageError();return;}invalidateDayKeysCache();_invalidateDayDataCache(currentKey);_invalidatePlanCache();_invalidateWatchCache();render(secs);_syncDay(currentKey,data);}
 const _dayDataCache=new Map();
 function getDayData(k){
   if(_dayDataCache.has(k))return _dayDataCache.get(k);
@@ -1722,30 +1722,6 @@ function getAllDayKeys(){if(_dayKeysCache)return _dayKeysCache;const keys=[];for
 function invalidateDayKeysCache(){_dayKeysCache=null;}
 let _storageWarned=false;
 function showStorageError(){if(_storageWarned)return;_storageWarned=true;alert('⚠️ Storage full or unavailable.');}
-let _streakLastCalc='';
-function _dayHasActivity(d){
-  if(!d)return false;
-  if((d.sessions||[]).length>0)return true;
-  if((d.activities||[]).some(a=>a.done||a.category==='sleep'||a.category==='workout'))return true;
-  if((d.habits||[]).some(h=>h.done))return true;
-  return false;
-}
-function updateStreak(force){
-  const today=todayKey();
-  if(!force&&_streakLastCalc===today&&meta.streak!==undefined&&meta.streak>0){_applyStreak(meta.streak);return;}
-  setTimeout(()=>{
-    let streak=0,check=today;
-    for(let i=0;i<365;i++){
-      if(_dayHasActivity(check===today?data:getDayData(check))){streak++;check=addDays(check,-1);}
-      else break;
-    }
-    meta.streak=streak;_streakLastCalc=today;
-    try{localStorage.setItem(META_K,JSON.stringify(meta));}catch(e){}
-    if(_authGuard())window._fbSaveMeta(_currentUser.uid,meta).catch(()=>{});
-    _applyStreak(streak);
-  },0);
-}
-function _applyStreak(n){const txt='🔥 '+n+(n===1?' day':' days');const el=document.getElementById('acct-streak');if(el)el.textContent=txt;}
 
 let _syncDayTimers={},_syncMetaTimer=null;
 function _syncDay(key,dayData){if(!_authGuard())return;clearTimeout(_syncDayTimers[key]);_syncDayTimers[key]=setTimeout(()=>{if(!_authGuard())return;showSyncState('syncing');window._fbSaveDay(_currentUser.uid,key,dayData).then(()=>showSyncState('synced')).catch(e=>{showSyncState('error');window._crFirebaseError&&window._crFirebaseError('syncDay failed: '+(e&&e.message),{stack:e&&e.stack});});},3000);}
@@ -1822,7 +1798,7 @@ function mergeMeta(local,remote){
   return{...remote,plans:Array.from(planMap.values()),deletedPlanIds:Array.from(deleted),courses:Array.from(courseSet),streak:Math.max(local.streak||0,remote.streak||0),autoCarryActivities:remote.autoCarryActivities||local.autoCarryActivities||false,autoCarryHabits:remote.autoCarryHabits||local.autoCarryHabits||false};
 }
 async function migrateLegacyData(uid){const LEGACY_STORE='dp6_day_',LEGACY_META='dp6_meta',legacyKeys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(LEGACY_STORE))legacyKeys.push(k);}const legacyMeta=localStorage.getItem(LEGACY_META);if(!legacyMeta&&!legacyKeys.length)return;setLoadingMsg('Migrating your data…');const newMetaKey='dp6_'+uid+'_meta',newStore='dp6_'+uid+'_day_';if(legacyMeta){try{const parsed=JSON.parse(legacyMeta);const existing=await window._fbLoadMeta(uid);if(existing.exists()){const merged=mergeMeta(parsed,existing.data());localStorage.setItem(newMetaKey,JSON.stringify(merged));await window._fbSaveMeta(uid,merged);}else{localStorage.setItem(newMetaKey,legacyMeta);await window._fbSaveMeta(uid,parsed);}localStorage.removeItem(LEGACY_META);}catch(e){}}for(const k of legacyKeys){const dateKey=k.replace(LEGACY_STORE,''),val=localStorage.getItem(k);if(!val)continue;try{const parsed=JSON.parse(val),newKey=newStore+dateKey;const existing=await window._fbLoadDay(uid,dateKey);if(existing.exists()){const merged=mergeDay(parsed,existing.data());localStorage.setItem(newKey,JSON.stringify(merged));await window._fbSaveDay(uid,dateKey,merged);}else{localStorage.setItem(newKey,val);await window._fbSaveDay(uid,dateKey,parsed);}localStorage.removeItem(k);}catch(e){}}}
-async function syncFromFirestore(uid){setLoadingMsg('Syncing from cloud…');const newMetaKey='dp6_'+uid+'_meta',newStore='dp6_'+uid+'_day_';try{const metaDoc=await window._fbLoadMeta(uid);if(metaDoc.exists()){const fsData=metaDoc.data(),localStr=localStorage.getItem(newMetaKey);if(localStr){const merged=mergeMeta(JSON.parse(localStr),fsData);localStorage.setItem(newMetaKey,JSON.stringify(merged));}else localStorage.setItem(newMetaKey,JSON.stringify(fsData));}else{const localStr=localStorage.getItem(newMetaKey);if(localStr)try{await window._fbSaveMeta(uid,JSON.parse(localStr));}catch(e){}}const daysSnap=await window._fbLoadAllDays(uid);const fsKeys=new Set();for(const docSnap of daysSnap.docs){const dateKey=docSnap.id;fsKeys.add(dateKey);const fsData=docSnap.data(),localKey=newStore+dateKey,localStr=localStorage.getItem(localKey);if(localStr){const merged=mergeDay(JSON.parse(localStr),fsData);localStorage.setItem(localKey,JSON.stringify(merged));}else localStorage.setItem(localKey,JSON.stringify(fsData));}for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(newStore)){const dateKey=k.replace(newStore,'');if(!fsKeys.has(dateKey)){const val=localStorage.getItem(k);if(val)try{await window._fbSaveDay(uid,dateKey,JSON.parse(val));}catch(e){}}}}showSyncState('synced');}catch(e){showSyncState('error');}}
+async function syncFromFirestore(uid,silent=false){if(!silent)setLoadingMsg('Syncing from cloud…');const newMetaKey='dp6_'+uid+'_meta',newStore='dp6_'+uid+'_day_';try{const metaDoc=await window._fbLoadMeta(uid);if(metaDoc.exists()){const fsData=metaDoc.data(),localStr=localStorage.getItem(newMetaKey);if(localStr){const merged=mergeMeta(JSON.parse(localStr),fsData);localStorage.setItem(newMetaKey,JSON.stringify(merged));}else localStorage.setItem(newMetaKey,JSON.stringify(fsData));}else{const localStr=localStorage.getItem(newMetaKey);if(localStr)try{await window._fbSaveMeta(uid,JSON.parse(localStr));}catch(e){}}const daysSnap=await window._fbLoadAllDays(uid);const fsKeys=new Set();for(const docSnap of daysSnap.docs){const dateKey=docSnap.id;fsKeys.add(dateKey);const fsData=docSnap.data(),localKey=newStore+dateKey,localStr=localStorage.getItem(localKey);if(localStr){const merged=mergeDay(JSON.parse(localStr),fsData);localStorage.setItem(localKey,JSON.stringify(merged));}else localStorage.setItem(localKey,JSON.stringify(fsData));}for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(newStore)){const dateKey=k.replace(newStore,'');if(!fsKeys.has(dateKey)){const val=localStorage.getItem(k);if(val)try{await window._fbSaveDay(uid,dateKey,JSON.parse(val));}catch(e){}}}}showSyncState('synced');}catch(e){showSyncState('error');}}
 
 function _secActive(id){const el=document.getElementById(id);return el&&el.closest('.section.active')!==null;}
 function _subActive(id){const el=document.getElementById(id);return el&&el.style.display!=='none';}
@@ -1893,7 +1869,6 @@ function toggleDiag(){
     ['Day cache',_dayDataCache.size+' entries'],
     ['Watch cache',_watchItemsCache?_watchItemsCache.length+' items':'empty'],
     ['Plan cache',Object.keys(_planSessionsCache).length+' plans'],
-    ['Streak',meta.streak+'d'],
     ['Crash queue',qSize+' pending'],
     ['Active plans',meta.plans.filter(q=>daysUntil(q.date)>=0).length],
     ['SW ready',String('serviceWorker' in navigator&&!!_swRegistration)],
@@ -1904,7 +1879,7 @@ function toggleDiag(){
   ].map(([k,v])=>`<div class="diag-row"><span>${k}</span><span style="color:var(--amber)">${v}</span></div>`).join('');
 }
 
-function _startSchedTick(){if(_schedInterval)return;_schedInterval=setInterval(()=>{if(document.visibilityState!=='visible')return;if(!data.schedule.length)return;const homeActive=document.getElementById('sec-home')?.classList.contains('active');const studySchedActive=document.getElementById('sec-studyplan')?.classList.contains('active')&&_subActive('sp-sched');if(homeActive)renderOverview();if(studySchedActive)renderSchedule();},60000);}
+function _startSchedTick(){if(_schedInterval)return;_schedInterval=setInterval(()=>{if(document.visibilityState!=='visible')return;const newKey=todayKey();if(newKey!==currentKey&&_currentUser){try{localStorage.setItem(STORE+currentKey,JSON.stringify(data));}catch(e){}currentKey=newKey;_selectedPlanId=null;_invalidatePlanCache();_invalidateWatchCache();loadDay(currentKey);initDate();renderAll();renderPlanQuickPick();}if(!data.schedule.length)return;const homeActive=document.getElementById('sec-home')?.classList.contains('active');const studySchedActive=document.getElementById('sec-studyplan')?.classList.contains('active')&&_subActive('sp-sched');if(homeActive)renderOverview();if(studySchedActive)renderSchedule();},60000);}
 function _stopSchedTick(){if(_schedInterval){clearInterval(_schedInterval);_schedInterval=null;}}
 
 const HOURS=['12','1','2','3','4','5','6','7','8','9','10','11'];
@@ -1960,17 +1935,17 @@ function switchTab(id,btn){
 }
 function switchSubnav(btn,showId){const subnav=btn.closest('.subnav');subnav.querySelectorAll('.subnav-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');subnav.parentElement.querySelectorAll(':scope > div:not(.subnav)').forEach(d=>d.style.display='none');document.getElementById(showId).style.display='';}
 
-function setMood(e,l){data.mood=l;data.moodEmoji=e;restoreMood();saveDay(['overview','mood','score']);}
+function setMood(e,l){if(data.mood===l){data.mood='';data.moodEmoji='';}else{data.mood=l;data.moodEmoji=e;}restoreMood();saveDay(['overview','mood','score']);}
 function restoreMood(){document.querySelectorAll('.mood-btn').forEach(b=>b.classList.toggle('selected',b.dataset.mood===data.mood));}
-function setRating(n){data.rating=n;restoreRating();saveDay(['overview','rating','score']);}
+function setRating(n){if(data.rating===n){data.rating=0;}else{data.rating=n;}restoreRating();saveDay(['overview','rating','score']);}
 function restoreRating(){document.querySelectorAll('.star-btn').forEach(b=>b.classList.toggle('lit',parseInt(b.dataset.r)<=(data.rating||0)));}
 function saveJournal(){data.journal=document.getElementById('journal-text').value;saveDay(['overview']);const btn=document.querySelector('.journal-foot .btn-ghost');btn.textContent='✓';setTimeout(()=>btn.textContent='Save',1500);}
 function restoreJournal(){document.getElementById('journal-text').value=data.journal||'';}
 function saveGoal(){data.goal.hours=Math.max(0.5,parseFloat(document.getElementById('study-goal').value)||0.5);data.goal.label=document.getElementById('goal-label').value;syncPlanFromGoalLabel(data.goal.label);saveDay(['sessions','overview','score']);}
 function sumHours(sessions){return Math.round(sessions.reduce((s,x)=>s+x.duration,0)*100)/100;}
 
-function calcScoreFor(d){const hrs=sumHours(d.sessions||[]),goal=(d.goal&&d.goal.hours)||6;const studyPct=Math.min(1,hrs/goal),tasksAll=(d.activities||[]).length,tasksDone=(d.activities||[]).filter(a=>a.done).length;const taskPct=tasksAll?tasksDone/tasksAll:0,ratingPct=(d.rating||0)/5;return{score:Math.round(studyPct*40+taskPct*35+ratingPct*25),studyPct,taskPct,ratingPct};}
-function calcScore(){const hrs=sumHours(data.sessions),goal=data.goal.hours||6;const studyPct=Math.min(1,hrs/goal),tasksAll=data.activities.length,tasksDone=data.activities.filter(a=>a.done).length;const taskPct=tasksAll?tasksDone/tasksAll:0,ratingPct=(data.rating||0)/5;return{score:Math.round(studyPct*40+taskPct*35+ratingPct*25),studyPct,taskPct,ratingPct};}
+function calcScoreFor(d){const hrs=sumHours(d.sessions||[]),goal=(d.goal&&d.goal.hours)||6;const studyPct=Math.min(1,hrs/goal),tasksAll=(d.activities||[]).length,tasksDone=(d.activities||[]).filter(a=>a.done).length;const taskPct=tasksAll?tasksDone/tasksAll:0,r=d.rating||0,ratingPct=r/5;let s=0;if(r>0)s=studyPct*40+taskPct*35+ratingPct*25;else s=(studyPct*4000/75)+(taskPct*3500/75);return{score:Math.round(s),studyPct,taskPct,ratingPct};}
+function calcScore(){const hrs=sumHours(data.sessions),goal=data.goal.hours||6;const studyPct=Math.min(1,hrs/goal),tasksAll=data.activities.length,tasksDone=data.activities.filter(a=>a.done).length;const taskPct=tasksAll?tasksDone/tasksAll:0,r=data.rating||0,ratingPct=r/5;let s=0;if(r>0)s=studyPct*40+taskPct*35+ratingPct*25;else s=(studyPct*4000/75)+(taskPct*3500/75);return{score:Math.round(s),studyPct,taskPct,ratingPct};}
 function renderScore(){const{score,studyPct,taskPct,ratingPct}=calcScore();const ring=document.getElementById('score-ring-dash');ring.style.strokeDashoffset=(188.5*(1-score/100)).toFixed(1);ring.style.stroke=score>=80?'var(--green)':score>=60?'var(--teal)':score>=40?'var(--amber)':'var(--rose)';document.getElementById('score-num').textContent=score;const[label,msg]=score>=90?['Outstanding 🏆','Absolutely crushing it today!']:score>=75?['Excellent 🔥','Strong day! Push a bit more.']:score>=60?['On Track 💪','Solid progress. Keep pushing.']:score>=40?['Getting There 🌱','Focus on habits or tasks to boost.']:['New Day ✨','Log a session or complete a task to begin.'];document.getElementById('score-label').textContent=label;document.getElementById('score-msg').textContent=msg;const set=(id,vid,p)=>{const el=document.getElementById(id);const vel=document.getElementById(vid);if(el)el.style.width=(p*100).toFixed(0)+'%';if(vel)vel.textContent=Math.round(p*100)+'%';};set('sb-study','sv-study',studyPct);set('sb-tasks','sv-tasks',taskPct);set('sb-rating','sv-rating',ratingPct);}
 
 function addSession(){const sub=document.getElementById('sess-subject').value.trim(),durRaw=document.getElementById('sess-dur').value,dur=parseFloat(durRaw);if(!sub){alert('⚠️ Enter a subject name.');return;}if(!durRaw||isNaN(dur)||dur<=0){alert('⚠️ Enter a valid duration (e.g. 1.5).');return;}if(dur>24){alert('⚠️ Duration cannot exceed 24 hours.');return;}const planId=_selectedPlanId||null;data.sessions.push({id:uid(),subject:sub,duration:dur,time:getTime('tp-sess'),planId,notes:document.getElementById('sess-notes').value.trim()});data.sessions.sort((a,b)=>{if(!a.time&&!b.time)return 0;if(!a.time)return 1;if(!b.time)return-1;return a.time.localeCompare(b.time);});document.getElementById('sess-subject').value='';document.getElementById('sess-dur').value='';document.getElementById('sess-notes').value='';resetTP('tp-sess');saveDay(['sessions','overview','score']);renderPlanQuickPick();if(document.getElementById('sp-plans')&&document.getElementById('sp-plans').style.display!=='none')renderPlans();}
@@ -2218,9 +2193,10 @@ function setWatchFilter(f){
   /* Only rebuild filtered results section */
   const allItems=getAllWatchItems();
   const filteredItems=f==='all'?[]:allItems.filter(w=>['watching','done','planned'].includes(f)?w.status===f:w.platform===f);
+  const dash=document.getElementById('watch-analytics-dash');
   let frEl=document.getElementById('wa-filtered');
-  if(!frEl){frEl=document.createElement('div');frEl.id='wa-filtered';const dash=document.getElementById('watch-analytics-dash');if(dash)dash.appendChild(frEl);}
-  frEl.innerHTML=filteredItems.length?`<div class="section-lbl">Filtered Results (${filteredItems.length})</div><div class="ov-card" style="margin-bottom:10px;">${filteredItems.slice(0,8).map(w=>`<div class="wa-recent-item"><div class="wa-recent-icon">${getPlat(w.platform).svg}</div><div class="wa-recent-info"><div class="wa-recent-title">${esc(w.title)}</div><div class="wa-recent-meta">${getPlat(w.platform).label}${w.notes?' · '+esc(w.notes):''} · <span style="color:${w.status==='done'?'var(--green)':w.status==='watching'?'var(--teal)':'var(--text3)'}">${w.status}</span></div></div></div>`).join('')}${filteredItems.length>8?`<div style="padding:8px 0 12px;font-size:11px;color:var(--text3);text-align:center;">+${filteredItems.length-8} more</div>`:''}</div>`:'';
+  if(!frEl&&dash){frEl=document.createElement('div');frEl.id='wa-filtered';dash.appendChild(frEl);}
+  if(frEl)frEl.innerHTML=filteredItems.length?`<div class="section-lbl">Filtered Results (${filteredItems.length})</div><div class="ov-card" style="margin-bottom:10px;">${filteredItems.slice(0,8).map(w=>`<div class="wa-recent-item"><div class="wa-recent-icon">${getPlat(w.platform).svg}</div><div class="wa-recent-info"><div class="wa-recent-title">${esc(w.title)}</div><div class="wa-recent-meta">${getPlat(w.platform).label}${w.notes?' · '+esc(w.notes):''} · <span style="color:${w.status==='done'?'var(--green)':w.status==='watching'?'var(--teal)':'var(--text3)'}">${w.status}</span></div></div></div>`).join('')}${filteredItems.length>8?`<div style="padding:8px 0 12px;font-size:11px;color:var(--text3);text-align:center;">+${filteredItems.length-8} more</div>`:''}</div>`:'';
   renderWatchList();
 }
 function renderWatchList(){const el=document.getElementById('watch-list');if(!el)return;let items=[...(data.watchlist||[])];if(_watchFilter!=='all'){if(['watching','done','planned'].includes(_watchFilter)){items=items.filter(w=>w.status===_watchFilter);}else{items=items.filter(w=>w.platform===_watchFilter);}}if(!items.length){el.innerHTML=emptyHTML('🎬',_watchFilter==='all'?'Nothing in your list yet':'No items match filter');return;}el.innerHTML=items.map(w=>{const p=getPlat(w.platform),sc={watching:'sw',planned:'sp',done:'sd'}[w.status]||'sp';return `<div class="watch-item"><div class="plat-icon">${p.svg}</div><div class="watch-info"><div class="watch-title">${esc(w.title)}</div><div class="watch-meta">${p.label}${w.notes?' · '+esc(w.notes):''}</div></div><select class="status-sel ${sc}" onchange="changeWatchStatus('${w.id}',this.value)"><option value="planned" ${w.status==='planned'?'selected':''}>Planned</option><option value="watching" ${w.status==='watching'?'selected':''}>Watching</option><option value="done" ${w.status==='done'?'selected':''}>Done</option></select><button class="btn-edit" style="margin-left:4px;" onclick="editWatch('${w.id}')">✏️</button><button class="btn-del" style="margin-left:4px;" onclick="removeItem('watchlist','${w.id}')">✕</button></div>`;}).join('');}
@@ -2368,9 +2344,10 @@ function loadMoreHistory(){_histShown+=HIST_PAGE;renderHistory();}
 function clearToday(){if(!confirm("Clear all of today's data? Cannot be undone."))return;localStorage.removeItem(STORE+currentKey);invalidateDayKeysCache();_invalidateDayDataCache(currentKey);_invalidatePlanCache();_invalidateWatchCache();if(_currentUser){window._fbSaveDay(_currentUser.uid,currentKey,emptyDay()).catch(()=>{});}data=emptyDay();_selectedPlanId=null;renderAll();renderSleepList();renderWorkoutList();renderSettings();renderPlanQuickPick();if(_subActive('more-weekly')){try{renderSleepWorkoutAnalytics();}catch(e){}}}
 function renderSettings(){
   const keys=getAllDayKeys();
-  if(_currentUser){const nameEl=document.getElementById('acct-name');const emailEl=document.getElementById('acct-email');if(nameEl)nameEl.textContent=_currentUser.displayName||'(no display name)';if(emailEl)emailEl.textContent=_currentUser.email;_applyStreak(meta.streak);}
+  if(_currentUser){const nameEl=document.getElementById('acct-name');const emailEl=document.getElementById('acct-email');if(nameEl)nameEl.textContent=_currentUser.displayName||'(no display name)';if(emailEl)emailEl.textContent=_currentUser.email;}
+  const sp=document.getElementById('acct-streak-pill');if(sp){if(meta.streak&&meta.streak>0){sp.style.display='inline-flex';sp.innerHTML=`<span style="font-size:10px;">●</span> 🔥 ${meta.streak} days`;}else{sp.style.display='none';}}
   const verLbl=document.getElementById('settings-ver-lbl');if(verLbl)verLbl.textContent='Version '+APP_VERSION+' · Build 20260511';
-  document.getElementById('storage-info').innerHTML=`<div class="mini-list-item"><div class="mli-left">Days tracked</div><div class="mli-right">${keys.length}</div></div><div class="mini-list-item"><div class="mli-left">Local storage used</div><div class="mli-right"><span id="storage-calc-result">…</span></div></div><div class="mini-list-item"><div class="mli-left">Plans created</div><div class="mli-right">${meta.plans.length}</div></div><div class="mini-list-item"><div class="mli-left">Courses saved</div><div class="mli-right">${meta.courses.length}</div></div><div class="mini-list-item"><div class="mli-left">Current streak</div><div class="mli-right">${meta.streak} days</div></div><div class="mini-list-item"><div class="mli-left">App version</div><div class="mli-right"><span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--amber);">v${APP_VERSION}</span></div></div>`;
+  document.getElementById('storage-info').innerHTML=`<div class="mini-list-item"><div class="mli-left">Days tracked</div><div class="mli-right" style="font-weight:700;">${keys.length}</div></div><div class="mini-list-item"><div class="mli-left">Local storage used</div><div class="mli-right" style="font-weight:700;"><span id="storage-calc-result">.</span></div></div><div class="mini-list-item"><div class="mli-left">Plans created</div><div class="mli-right" style="font-weight:700;">${meta.plans.length}</div></div><div class="mini-list-item"><div class="mli-left">Courses saved</div><div class="mli-right" style="font-weight:700;">${meta.courses.length}</div></div><div class="mini-list-item"><div class="mli-left">Current streak</div><div class="mli-right" style="font-weight:700;">${meta.streak||0} days</div></div><div class="mini-list-item"><div class="mli-left">App version</div><div class="mli-right"><span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--amber);font-weight:700;">v${APP_VERSION}</span></div></div>`;
   /* Async storage calc — don't block tab switch */
   setTimeout(()=>{
     let totalBytes=0;
@@ -2380,7 +2357,7 @@ function renderSettings(){
   },0);
 }
 
-function initDate(){const now=new Date();document.getElementById('date-pill').textContent=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][now.getDay()]+' '+MTHS[now.getMonth()]+' '+now.getDate();const name=_currentUser?(_currentUser.displayName||_currentUser.email.split('@')[0]):'';document.getElementById('header-sub').textContent=getGreeting(now,name);}
+function initDate(){const now=new Date();document.getElementById('date-pill').textContent=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][now.getDay()]+' '+MTHS[now.getMonth()]+' '+now.getDate();const name=_currentUser?(_currentUser.displayName||_currentUser.email.split('@')[0]):'';document.getElementById('header-sub').textContent=getGreeting(now,name);const hv=document.getElementById('hdr-ver');if(hv)hv.textContent='v'+(typeof APP_VERSION!=='undefined'?APP_VERSION:'');}
 function getGreeting(now,name){const h=now.getHours();const g=h>=4&&h<12?'Good morning':h>=12&&h<16?'Good afternoon':h>=16&&h<22?'Good evening':'Good night';return g+(name?', '+name:'')+'!';}
 
 function toggleAutoCarry(type){if(type==='habits')meta.autoCarryHabits=!meta.autoCarryHabits;else meta.autoCarryActivities=!meta.autoCarryActivities;saveMeta();renderCarryToggles();}
@@ -2395,10 +2372,10 @@ function editActivity(id){const result=getItemFromAnyDay('activities',id);if(!re
 function editWatch(id){const result=getItemFromAnyDay('watchlist',id);if(!result)return;const w=result.item;_eid=id;_etype='watch';document.getElementById('edit-sheet-title').textContent='Edit Watch Item';const platOpts=Object.keys(PLAT).map(k=>`<option value="${k}" ${w.platform===k?'selected':''}>${PLAT[k].label}</option>`).join('');document.getElementById('edit-sheet-body').innerHTML=`<div class="form-group"><label class="field-label">Title</label><input type="text" id="ei-title" value="${esc(w.title)}"></div><div class="form-group"><label class="field-label">Platform</label><select id="ei-platform">${platOpts}</select></div><div class="form-group"><label class="field-label">Status</label><select id="ei-status"><option value="planned" ${w.status==='planned'?'selected':''}>Planned</option><option value="watching" ${w.status==='watching'?'selected':''}>Watching</option><option value="done" ${w.status==='done'?'selected':''}>Done</option></select></div><div class="form-group"><label class="field-label">Episode / Notes</label><input type="text" id="ei-notes" value="${esc(w.notes||'')}"></div>`;document.getElementById('edit-actions').innerHTML=`<button class="btn btn-primary" onclick="saveEdit()">Save Changes</button><button class="btn btn-ghost" onclick="closeEdit()">Cancel</button>`;openEdit();}
 function editPlan(id){const p=meta.plans.find(x=>x.id===id);if(!p)return;_eid=id;_etype='plan';document.getElementById('edit-sheet-title').textContent='Edit Plan';const courseOpts='<option value="">— Select Course —</option>'+meta.courses.map(c=>`<option value="${esc(c)}" ${p.course===c?'selected':''}>${esc(c)}</option>`).join('');document.getElementById('edit-sheet-body').innerHTML=`<div class="form-group"><label class="field-label">Plan Name</label><input type="text" id="ei-pname" value="${esc(p.name)}"></div><div class="form-group"><label class="field-label">Target Date</label><input type="date" id="ei-pdate" value="${p.date}" style="color-scheme:${_isLight?'light':'dark'};"></div><div class="form-group"><label class="field-label">Target Hours</label><input type="number" id="ei-phours" value="${p.targetHours||''}" min="1" max="500" step="0.5" placeholder="e.g. 40"></div><div class="form-group"><label class="field-label">Course Name</label><select id="ei-pcourse">${courseOpts}</select></div><div class="form-group"><label class="field-label">Notes</label><textarea id="ei-pnotes" style="min-height:70px;">${esc(p.notes||'')}</textarea></div>`;document.getElementById('edit-actions').innerHTML=`<button class="btn btn-primary" onclick="saveEdit()">Save Changes</button><button class="btn btn-ghost" onclick="closeEdit()">Cancel</button>`;openEdit();}
 function g(id){const el=document.getElementById(id);return el?el.value.trim():'';}
-function saveEdit(){if(!_eid||!_etype){closeEdit();return;}if(_etype==='session'){const result=getItemFromAnyDay('sessions',_eid);if(!result){closeEdit();return;}const sub=g('ei-subject'),durRaw=document.getElementById('ei-dur').value,dur=parseFloat(durRaw);if(!sub){alert('⚠️ Subject cannot be empty.');return;}if(!durRaw||isNaN(dur)||dur<=0){alert('⚠️ Enter a valid duration.');return;}if(dur>24){alert('⚠️ Duration cannot exceed 24 hours.');return;}const updated={...result.item,subject:sub,duration:dur,time:g('ei-time')||'',planId:g('ei-plan')||null,notes:g('ei-notes')};closeEdit();saveItemToDay('sessions',_eid,updated,['sessions','overview','score']);renderPlanQuickPick();if(document.getElementById('sp-plans')&&document.getElementById('sp-plans').style.display!=='none')renderPlans();}else if(_etype==='schedule'){const result=getItemFromAnyDay('schedule',_eid);if(!result){closeEdit();return;}const title=g('ei-title');if(!title){alert('⚠️ Title required.');return;}const ns=g('ei-start')||'',ne=g('ei-end')||'';if(result.dayKey===currentKey&&ns&&isOverlap(ns,ne,_eid)){alert('⚠️ Overlaps an existing block.');return;}const updated={...result.item,title,type:g('ei-type'),start:ns,end:ne,desc:g('ei-desc')};closeEdit();saveItemToDay('schedule',_eid,updated,['schedule','overview']);}else if(_etype==='activity'){const result=getItemFromAnyDay('activities',_eid);if(!result){closeEdit();return;}const name=g('ei-name');if(!name){alert('⚠️ Name required.');return;}const dur=parseFloat(document.getElementById('ei-actdur').value)||0;const updated={...result.item,name,category:g('ei-category')||'general',priority:g('ei-priority'),duration:dur||undefined,time:g('ei-time')||'',notes:g('ei-notes')};closeEdit();saveItemToDay('activities',_eid,updated,['activities','overview','score']);}else if(_etype==='watch'){const result=getItemFromAnyDay('watchlist',_eid);if(!result){closeEdit();return;}const title=g('ei-title');if(!title){alert('⚠️ Title required.');return;}const updated={...result.item,title,platform:g('ei-platform'),status:g('ei-status'),notes:g('ei-notes')};closeEdit();saveItemToDay('watchlist',_eid,updated,['watch','overview']);}else if(_etype==='plan'){const p=meta.plans.find(x=>x.id===_eid);if(!p)return;const name=g('ei-pname'),date=g('ei-pdate');if(!name||!date){alert('Name and date required.');return;}const oldName=p.name;p.name=name;p.date=date;p.targetHours=parseFloat(g('ei-phours'))||0;p.course=g('ei-pcourse')||'';p.notes=g('ei-pnotes');if(data.goal.label===oldName&&_selectedPlanId===p.id){data.goal.label=name;const lEl=document.getElementById('goal-label');if(lEl)lEl.value=name;}saveMeta();closeEdit();renderPlans();renderOverview();renderPlanQuickPick();renderStudyStatBar();updateGoalPlanBanner();}}
+function saveEdit(){if(!_eid||!_etype){closeEdit();return;}const id=_eid;if(_etype==='session'){const result=getItemFromAnyDay('sessions',id);if(!result){closeEdit();return;}const sub=g('ei-subject'),durRaw=document.getElementById('ei-dur').value,dur=parseFloat(durRaw);if(!sub){alert('⚠️ Subject cannot be empty.');return;}if(!durRaw||isNaN(dur)||dur<=0){alert('⚠️ Enter a valid duration.');return;}if(dur>24){alert('⚠️ Duration cannot exceed 24 hours.');return;}const updated={...result.item,subject:sub,duration:dur,time:g('ei-time')||'',planId:g('ei-plan')||null,notes:g('ei-notes')};closeEdit();saveItemToDay('sessions',id,updated,['sessions','overview','score']);renderPlanQuickPick();if(document.getElementById('sp-plans')&&document.getElementById('sp-plans').style.display!=='none')renderPlans();}else if(_etype==='schedule'){const result=getItemFromAnyDay('schedule',id);if(!result){closeEdit();return;}const title=g('ei-title');if(!title){alert('⚠️ Title required.');return;}const ns=g('ei-start')||'',ne=g('ei-end')||'';if(result.dayKey===currentKey&&ns&&isOverlap(ns,ne,id)){alert('⚠️ Overlaps an existing block.');return;}const updated={...result.item,title,type:g('ei-type'),start:ns,end:ne,desc:g('ei-desc')};closeEdit();saveItemToDay('schedule',id,updated,['schedule','overview']);}else if(_etype==='activity'){const result=getItemFromAnyDay('activities',id);if(!result){closeEdit();return;}const name=g('ei-name');if(!name){alert('⚠️ Name required.');return;}const dur=parseFloat(document.getElementById('ei-actdur').value)||0;const updated={...result.item,name,category:g('ei-category')||'general',priority:g('ei-priority'),duration:dur||undefined,time:g('ei-time')||'',notes:g('ei-notes')};closeEdit();saveItemToDay('activities',id,updated,['activities','overview','score']);}else if(_etype==='watch'){const result=getItemFromAnyDay('watchlist',id);if(!result){closeEdit();return;}const title=g('ei-title');if(!title){alert('⚠️ Title required.');return;}const updated={...result.item,title,platform:g('ei-platform'),status:g('ei-status'),notes:g('ei-notes')};closeEdit();saveItemToDay('watchlist',id,updated,['watch','overview']);}else if(_etype==='plan'){const p=meta.plans.find(x=>x.id===id);if(!p)return;const name=g('ei-pname'),date=g('ei-pdate');if(!name||!date){alert('Name and date required.');return;}const oldName=p.name;p.name=name;p.date=date;p.targetHours=parseFloat(g('ei-phours'))||0;p.course=g('ei-pcourse')||'';p.notes=g('ei-pnotes');if(data.goal.label===oldName&&_selectedPlanId===p.id){data.goal.label=name;const lEl=document.getElementById('goal-label');if(lEl)lEl.value=name;}saveMeta();closeEdit();renderPlans();renderOverview();renderPlanQuickPick();renderStudyStatBar();updateGoalPlanBanner();}}
 
 _startSchedTick();
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){_startSchedTick();render(null);const newKey=todayKey();if(newKey!==currentKey&&_currentUser){try{localStorage.setItem(STORE+currentKey,JSON.stringify(data));}catch(e){}currentKey=newKey;_selectedPlanId=null;_invalidatePlanCache();_invalidateWatchCache();loadDay(currentKey);initDate();renderAll();renderPlanQuickPick();}}else{_stopSchedTick();}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){_startSchedTick();render(null);const newKey=todayKey();if(newKey!==currentKey&&_currentUser){try{localStorage.setItem(STORE+currentKey,JSON.stringify(data));}catch(e){}currentKey=newKey;_selectedPlanId=null;_invalidatePlanCache();_invalidateWatchCache();loadDay(currentKey);initDate();renderAll();renderPlanQuickPick();}if(_currentUser){showSyncState('syncing');syncFromFirestore(_currentUser.uid,true).then(()=>{loadMeta();loadDay(currentKey);renderAll();renderPlanQuickPick();});}}else{_stopSchedTick();}});
 
 async function initApp(user){
   /* Hard reset if switching accounts */
@@ -2410,7 +2387,7 @@ async function initApp(user){
   META_K='dp6_'+user.uid+'_meta';
   _splashMsg('Syncing planner…');
   window._markStartup&&window._markStartup('authRestored');
-  document.getElementById('auth-loading').classList.remove('hidden');document.getElementById('main-app').style.display='none';setLoadingMsg('Setting up…');_dayKeysCache=null;currentKey=todayKey();_selectedPlanId=null;await migrateLegacyData(user.uid);await syncFromFirestore(user.uid);invalidateDayKeysCache();_invalidateDayDataCache();_invalidatePlanCache();_invalidateWatchCache();loadMeta();loadDay(currentKey);(function(){const lbl=(data.goal.label||'').trim().toLowerCase();if(lbl){const m=meta.plans.find(p=>p.name.toLowerCase()===lbl&&daysUntil(p.date)>=0);if(m){_selectedPlanId=m.id;return;}}const linked=data.sessions.filter(s=>s.planId).sort((a,b)=>(b.time||'').localeCompare(a.time||''));if(linked.length){const pid=linked[0].planId;if(meta.plans.find(p=>p.id===pid&&daysUntil(p.date)>=0))_selectedPlanId=pid;}})();_splashMsg('Preparing dashboard…');applyTheme();initTimePickers();initDate();_streakLastCalc="";updateStreak(true);renderAll();renderPlanQuickPick();renderCourseSelect('plan-course','');renderCarryToggles();hideAuthScreen();}
+  document.getElementById('auth-loading').classList.remove('hidden');document.getElementById('main-app').style.display='none';setLoadingMsg('Setting up…');_dayKeysCache=null;currentKey=todayKey();_selectedPlanId=null;await migrateLegacyData(user.uid);await syncFromFirestore(user.uid);invalidateDayKeysCache();_invalidateDayDataCache();_invalidatePlanCache();_invalidateWatchCache();loadMeta();loadDay(currentKey);(function(){const lbl=(data.goal.label||'').trim().toLowerCase();if(lbl){const m=meta.plans.find(p=>p.name.toLowerCase()===lbl&&daysUntil(p.date)>=0);if(m){_selectedPlanId=m.id;return;}}const linked=data.sessions.filter(s=>s.planId).sort((a,b)=>(b.time||'').localeCompare(a.time||''));if(linked.length){const pid=linked[0].planId;if(meta.plans.find(p=>p.id===pid&&daysUntil(p.date)>=0))_selectedPlanId=pid;}})();_splashMsg('Preparing dashboard…');applyTheme();initTimePickers();initDate();renderAll();renderPlanQuickPick();renderCourseSelect('plan-course','');renderCarryToggles();hideAuthScreen();}
 
 function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user);}else{showAuthScreen();}});}
 
@@ -2571,41 +2548,4 @@ function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user
   window.debugHeartbeat=()=>({lastBeat:_lastHeartbeat,wasHidden:_wasHidden,focused:_focused,phase:_startupPhase});
 
   window._markStartup=_markStartup;
-  window._firstPaintDone=false;
-
-  window._crSWError=function(msg,extra){_report('sw',msg,extra);};
-
-  window._crFirebaseError=function(msg,extra){_report('firebase',msg,extra);};
-
-  window.addEventListener('online',_flush);
-
-  window.addEventListener('load',()=>{
-    _startHeartbeat();
-    /* flush any queued reports */
-    setTimeout(_flush,5000);
-  });
-
-  function _debugInfo(){
-    const e=_env();
-    return `Planner Debug\nVersion: ${e.appVersion}\nBrowser: ${e.browser}\nPlatform: ${e.platform}\nPWA: ${e.standalonePWA}\nViewport: ${e.vpW}x${e.vpH}\nOnline: ${e.onlineStatus}\nSection: ${e.section}\nMemory: ${e.memoryMB!==null?e.memoryMB+'MB':'n/a'}\nConnection: ${e.connType||'n/a'}\nTimezone: ${e.timezone}`;
-  }
-
-  window.debugCrashReporter={
-    getEnv:_env,
-    getQueue:()=>[..._queue],
-    getSeen:()=>[..._seen],
-    copyDebugInfo:()=>{
-      const info=_debugInfo();
-      navigator.clipboard&&navigator.clipboard.writeText(info).catch(()=>{});
-      return info;
-    },
-    testCrashReport:()=>_report('test','Test crash report from debugCrashReporter',{line:0,file:'test'}),
-    testPromiseRejection:()=>Promise.reject(new Error('Test promise rejection')),
-  };
-
-})();
-
-if(window._fbReady){startAuthListener();}
-else{window.addEventListener('fb-ready',startAuthListener);}
-</script>
-</body>
+  window._firstPaintDo
