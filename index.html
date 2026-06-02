@@ -2548,4 +2548,41 @@ function startAuthListener(){window._fbOnAuthChange(user=>{if(user){initApp(user
   window.debugHeartbeat=()=>({lastBeat:_lastHeartbeat,wasHidden:_wasHidden,focused:_focused,phase:_startupPhase});
 
   window._markStartup=_markStartup;
-  window._firstPaintDo
+  window._firstPaintDone=false;
+
+  window._crSWError=function(msg,extra){_report('sw',msg,extra);};
+
+  window._crFirebaseError=function(msg,extra){_report('firebase',msg,extra);};
+
+  window.addEventListener('online',_flush);
+
+  window.addEventListener('load',()=>{
+    _startHeartbeat();
+    /* flush any queued reports */
+    setTimeout(_flush,5000);
+  });
+
+  function _debugInfo(){
+    const e=_env();
+    return `Planner Debug\nVersion: ${e.appVersion}\nBrowser: ${e.browser}\nPlatform: ${e.platform}\nPWA: ${e.standalonePWA}\nViewport: ${e.vpW}x${e.vpH}\nOnline: ${e.onlineStatus}\nSection: ${e.section}\nMemory: ${e.memoryMB!==null?e.memoryMB+'MB':'n/a'}\nConnection: ${e.connType||'n/a'}\nTimezone: ${e.timezone}`;
+  }
+
+  window.debugCrashReporter={
+    getEnv:_env,
+    getQueue:()=>[..._queue],
+    getSeen:()=>[..._seen],
+    copyDebugInfo:()=>{
+      const info=_debugInfo();
+      navigator.clipboard&&navigator.clipboard.writeText(info).catch(()=>{});
+      return info;
+    },
+    testCrashReport:()=>_report('test','Test crash report from debugCrashReporter',{line:0,file:'test'}),
+    testPromiseRejection:()=>Promise.reject(new Error('Test promise rejection')),
+  };
+
+})();
+
+if(window._fbReady){startAuthListener();}
+else{window.addEventListener('fb-ready',startAuthListener);}
+</script>
+</body>
