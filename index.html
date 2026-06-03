@@ -1481,7 +1481,7 @@ function hideSplash(){
 }
 /* Failsafe: only on fresh start */
 if(_isFreshStart)setTimeout(()=>{hideSplash();['main-app','auth-screen'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.add('pl-ready');});},12000);
-const APP_VERSION = '2.9.9';
+const APP_VERSION = '2.10.0';
 const CHANGELOG = [
   'Day Summary placed below score card',
   'Cleaner score grade labels',
