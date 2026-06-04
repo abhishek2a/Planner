@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#040403">
-<link rel="manifest" id="pwa-manifest">
+<link rel="manifest" href="manifest.json">
 <title>Planner</title>
 <!-- CRITICAL: paint background before ANY other resource loads -->
 <style>html,body{background:#080706;margin:0;padding:0;}
@@ -1451,9 +1451,7 @@ window.onerror=function(msg,file,line,col,err){window._earlyErrors.push({type:'r
 window.onunhandledrejection=function(ev){const r=ev&&ev.reason;window._earlyErrors.push({type:'promise',msg:r instanceof Error?r.message:String(r||''),stack:r instanceof Error?r.stack:null,ts:new Date().toISOString()});};
 
 (function(){
-  const manifest={name:"Planner",short_name:"Planner",start_url:"./",display:"standalone",background_color:"#080706",theme_color:"#080706",orientation:"portrait-primary"};
-  const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
-  document.getElementById('pwa-manifest').href=URL.createObjectURL(blob);
+
 })();
 
 /* Only show on fresh page load — not on tab resume/background restore */
