@@ -229,11 +229,12 @@ body.light .score-card{box-shadow:0 4px 24px rgba(0,0,0,0.07);}
 body.light .stat-card{box-shadow:0 2px 10px rgba(0,0,0,0.05);}
 
 html{height:100%;overscroll-behavior:none;}
-body{font-family:-apple-system,'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;}
+body{font-family:-apple-system,'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
+input,textarea,select{-webkit-user-select:auto;user-select:auto;}
 ::-webkit-scrollbar{display:none;}*{scrollbar-width:none;}
 
 /* ── APP SHELL ── */
-.app{display:flex;flex-direction:column;height:100vh;height:100dvh;position:fixed;inset:0;}
+.app{display:flex;flex-direction:column;position:fixed;inset:0;}
 
 /* ── AUTH SCREEN ── */
 #auth-screen{
@@ -1718,7 +1719,7 @@ function _invalidateDayDataCache(k){if(k)_dayDataCache.delete(k);else _dayDataCa
 function getOrCreateDayData(k){const d=getDayData(k);if(d)return d;const empty={goal:{hours:6,label:''},sessions:[],schedule:[],activities:[],watchlist:[],habits:[],mood:'',moodEmoji:'',journal:'',rating:0};const prev=getDayData(addDays(k,-1));if(prev&&prev.goal)empty.goal=JSON.parse(JSON.stringify(prev.goal));return empty;}
 function saveDayToKey(k,dayData){try{localStorage.setItem(STORE+k,JSON.stringify(dayData));}catch(e){showStorageError();}_invalidateDayDataCache(k);invalidateDayKeysCache();_invalidatePlanCache();_invalidateWatchCache();_syncDay(k,dayData);}
 let _dayKeysCache=null;
-function getAllDayKeys(){if(_dayKeysCache)return _dayKeysCache;const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(STORE))keys.push(k.replace(STORE,''));}_dayKeysCache=keys.sort().reverse();return _dayKeysCache;}
+function getAllDayKeys(){if(_dayKeysCache)return _dayKeysCache;const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(STORE))keys.push(k.replace(STORE,''));}_dayKeysCache=keys.sort().reverse();if(_dayKeysCache.length>45){const toDelete=_dayKeysCache.splice(45);toDelete.forEach(k=>localStorage.removeItem(STORE+k));}return _dayKeysCache;}
 function invalidateDayKeysCache(){_dayKeysCache=null;}
 let _storageWarned=false;
 function showStorageError(){if(_storageWarned)return;_storageWarned=true;alert('⚠️ Storage full or unavailable.');}
@@ -1737,6 +1738,8 @@ function _invalidateWatchCache(){_watchItemsCache=null;}
 async function manualSync(){
   if(!_currentUser){alert('Not signed in.');return;}
   showSyncState('syncing');
+  const loader=document.getElementById('auth-loading');
+  if(loader)loader.classList.remove('hidden');
   try{
     /* 1. Pull from Firestore + merge into localStorage */
     await syncFromFirestore(_currentUser.uid);
@@ -1756,7 +1759,7 @@ async function manualSync(){
     renderAll();
     renderPlanQuickPick();
     if(_subActive('more-weekly'))renderWatchAnalytics();
-  }catch(e){showSyncState('error');}
+  }catch(e){showSyncState('error');}finally{if(loader)loader.classList.add('hidden');}
 }
 function mergeArrayById(local,remote,preferLocal){
   const map=new Map();
@@ -1812,7 +1815,8 @@ function render(secs){
   /* Section-specific renders — only when that section/subsection visible */
   if(has('sessions')&&studyActive&&_subActive('sp-study'))renderSessions();
   if(has('schedule')){if(studyActive&&_subActive('sp-sched'))renderSchedule();}
-  if(has('activities')&&actActive){renderActivities();renderSleepList();renderWorkoutList();renderHabitList();}
+  if(has('activities')&&actActive){renderActivities();renderSleepList();renderWorkoutList();}
+  if((has('activities')||has('habits'))&&actActive)renderHabitList();
   if(has('watch'))renderWatch();
   /* Overview and score: always run when requested (feeds home AND overviews used by other code) */
   if(has('overview')||has('plans'))_renderOverviewDebounced();
@@ -1904,7 +1908,7 @@ function syncGoalLabelFromPlan(planId){const lEl=document.getElementById('goal-l
 function syncPlanFromGoalLabel(label){const lbl=(label||'').trim().toLowerCase();if(lbl){const match=meta.plans.find(p=>{const hrs=getPlanTotalHours(p.id);const pct=p.targetHours?Math.round((hrs/p.targetHours)*100):null;return p.name.toLowerCase()===lbl&&daysUntil(p.date)>=0&&!(pct!==null&&pct>=100);});if(match&&match.id!==_selectedPlanId){_selectedPlanId=match.id;renderGoalPlanDropdown();renderPlanQuickPick();updateLinkedPlanPreview();return;}}if(!lbl&&_selectedPlanId){const curPlan=meta.plans.find(p=>p.id===_selectedPlanId);if(curPlan&&data.goal.label===curPlan.name){_selectedPlanId=null;renderGoalPlanDropdown();renderPlanQuickPick();updateLinkedPlanPreview();}}updateGoalPlanBanner();}
 function updateGoalPlanBanner(){const banner=document.getElementById('goal-plan-link-banner');const hint=document.getElementById('goal-label-plan-hint');if(!banner)return;if(_selectedPlanId){const p=meta.plans.find(x=>x.id===_selectedPlanId);if(p){const d=daysUntil(p.date),daysStr=d===0?'due today':d>0?d+'d left':Math.abs(d)+'d overdue';document.getElementById('goal-plan-link-text').textContent='Sessions will be added to "'+p.name+'" · '+daysStr;banner.style.display='flex';if(hint)hint.style.display='flex';return;}}banner.style.display='none';if(hint)hint.style.display='none';}
 
-function daysUntil(dateStr){const target=new Date(dateStr+'T00:00:00');const today=new Date();today.setHours(0,0,0,0);return Math.round((target-today)/(1000*60*60*24));}
+function daysUntil(dateStr){if(!dateStr)return 0;const [y,m,d]=dateStr.split('-');const target=new Date(y,m-1,d);const today=new Date();today.setHours(0,0,0,0);return Math.round((target-today)/(1000*60*60*24));}
 function fmtPlanDate(dateStr){const d=new Date(dateStr+'T00:00:00');return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();}
 
 function renderPlanQuickPick(){const scroll=document.getElementById('plan-pick-scroll');if(!scroll)return;const activePlans=meta.plans.filter(p=>{const hrs=getPlanTotalHours(p.id);const pct=p.targetHours?Math.round((hrs/p.targetHours)*100):null;if(pct!==null&&pct>=100)return false;return daysUntil(p.date)>=0;});let html=`<div class="plan-pick-card no-plan ${!_selectedPlanId?'selected':''}" id="ppc-none" onclick="selectPlanPick(null)">No plan</div>`;activePlans.forEach(p=>{const days=daysUntil(p.date),hrs=getPlanTotalHours(p.id),pct=p.targetHours?Math.min(100,Math.round((hrs/p.targetHours)*100)):null;const daysCls=days<=3?'ppd-soon':pct===100?'ppd-done':'ppd-ok';const daysLbl=days===0?'Today!':days+'d left';const isSelected=_selectedPlanId===p.id;html+=`<div class="plan-pick-card ${isSelected?'selected':''}" onclick="selectPlanPick('${p.id}')"><div class="plan-pick-name">${esc(p.name)}</div><div class="plan-pick-meta"><span class="plan-pick-days ${daysCls}">${daysLbl}</span><span>${hrs}h${p.targetHours?' / '+p.targetHours+'h':''}</span></div></div>`;});scroll.innerHTML=html;const dl=document.getElementById('plan-names-list');if(dl)dl.innerHTML=activePlans.map(p=>`<option value="${esc(p.name)}">`).join('');const wrap=document.getElementById('plan-quickpick-wrap');if(wrap)wrap.style.display=activePlans.length?'':'none';renderGoalPlanDropdown();updateLinkedPlanPreview();updateGoalPlanBanner();}
@@ -1914,7 +1918,7 @@ function updateLinkedPlanPreview(){const el=document.getElementById('linked-plan
 function renderStudyStatBar(){const hrs=sumHours(data.sessions);const activePlans=meta.plans.filter(p=>{const hrs=getPlanTotalHours(p.id);const pct=p.targetHours?Math.round((hrs/p.targetHours)*100):null;return daysUntil(p.date)>=0&&!(pct!==null&&pct>=100);}).length;const el1=document.getElementById('sp-hrs-today'),el2=document.getElementById('sp-goal-val'),el3=document.getElementById('sp-sess-count'),el4=document.getElementById('sp-active-plans');if(el1)el1.textContent=hrs+'h';if(el2)el2.textContent=data.goal.hours+'h';if(el3)el3.textContent=data.sessions.length;if(el4)el4.textContent=activePlans;}
 
 function addPlan(){const name=document.getElementById('plan-name').value.trim(),date=document.getElementById('plan-date').value;if(!name){alert('⚠️ Enter a plan name.');return;}if(!date){alert('⚠️ Pick a target date.');return;}const hoursRaw=document.getElementById('plan-hours').value,hours=parseFloat(hoursRaw)||0;if(hoursRaw&&(isNaN(hours)||hours<0)){alert('⚠️ Enter a valid number of hours.');return;}if(hours>5000){alert('⚠️ Target hours seems too high. Max 5000.');return;}const notes=document.getElementById('plan-notes').value.trim(),course=document.getElementById('plan-course').value||'';meta.plans.push({id:uid(),name,date,targetHours:hours,notes,course,createdAt:todayKey()});saveMeta();document.getElementById('plan-name').value='';document.getElementById('plan-date').value='';document.getElementById('plan-hours').value='';document.getElementById('plan-notes').value='';document.getElementById('plan-course').value='';renderPlans();renderCoursesList();renderOverview();renderPlanQuickPick();renderStudyStatBar();}
-function deletePlan(id){if(!confirm('Delete this plan?'))return;meta.plans=meta.plans.filter(p=>p.id!==id);if(!meta.deletedPlanIds)meta.deletedPlanIds=[];if(!meta.deletedPlanIds.includes(id))meta.deletedPlanIds.push(id);if(meta.deletedPlanIds.length>200)meta.deletedPlanIds=meta.deletedPlanIds.slice(-200);if(_selectedPlanId===id){_selectedPlanId=null;const lEl=document.getElementById('goal-label');if(lEl&&data.goal.label){lEl.value='';data.goal.label='';}updateGoalPlanBanner();}/* push immediately — prevents stale Firestore re-merge */if(_currentUser)window._fbSaveMeta(_currentUser.uid,meta).catch(()=>{});else saveMeta();renderPlans();renderOverview();renderPlanQuickPick();renderStudyStatBar();}
+function deletePlan(id){if(!confirm('Delete this plan?'))return;meta.plans=meta.plans.filter(p=>p.id!==id);if(!meta.deletedPlanIds)meta.deletedPlanIds=[];if(!meta.deletedPlanIds.includes(id))meta.deletedPlanIds.push(id);if(meta.deletedPlanIds.length>200)meta.deletedPlanIds=meta.deletedPlanIds.slice(-200);if(_selectedPlanId===id){_selectedPlanId=null;const lEl=document.getElementById('goal-label');if(lEl&&data.goal.label){lEl.value='';data.goal.label='';}updateGoalPlanBanner();}let ds=false;data.sessions.forEach(s=>{if(s.planId===id){s.planId=null;ds=true;}});if(ds)saveDay(false);if(_currentUser)window._fbSaveMeta(_currentUser.uid,meta).catch(()=>{});else saveMeta();renderPlans();renderOverview();renderPlanQuickPick();renderStudyStatBar();}
 function renderPlans(){const el=document.getElementById('plans-list-container');if(!el)return;renderCourseSelect('plan-course','');renderCoursesList();if(!meta.plans.length){el.innerHTML=emptyHTML('📋','No plans yet. Create one to track exam prep or any goal!');return;}const sorted=[...meta.plans].sort((a,b)=>{const da=daysUntil(a.date),db=daysUntil(b.date);if(da>=0&&db>=0)return da-db;if(da>=0)return -1;if(db>=0)return 1;return db-da;});el.innerHTML=sorted.map(p=>{const days=daysUntil(p.date),totalHrs=getPlanTotalHours(p.id),sessions=getPlanSessions(p.id);const pct=p.targetHours?Math.min(100,Math.round((totalHrs/p.targetHours)*100)):null;const isOverdue=days<0,isToday=days===0,isDone=pct!==null&&pct>=100;let countdownChip=isDone?`<span class="plan-chip pc-done">✓ Goal reached</span>`:isOverdue?`<span class="plan-chip pc-past">${Math.abs(days)}d ago</span>`:isToday?`<span class="plan-chip pc-today soon">📅 Today!</span>`:days<=3?`<span class="plan-chip pc-countdown soon">⚠️ ${days}d left</span>`:`<span class="plan-chip pc-countdown">${days}d left</span>`;const hrsChip=`<span class="plan-chip pc-hrs">📚 ${totalHrs}h${p.targetHours?' / '+p.targetHours+'h':' logged'}</span>`;const courseChip=p.course?`<span class="plan-chip pc-course">🎓 ${esc(p.course)}</span>`:'';const recentSessions=sessions.slice(-3).reverse();const sessHTML=recentSessions.length?`<div class="plan-sessions">${recentSessions.map(s=>`<div class="plan-session-row"><span class="plan-session-left">${esc(s.subject)}${s.notes?' · '+esc(s.notes):''}</span><span class="plan-session-right">${s.duration}h</span><span class="plan-session-date">${fmtKey(s.dayKey).split(',')[0]}</span></div>`).join('')}${sessions.length>3?`<div style="padding:6px 0;font-size:11px;color:var(--text3);">+${sessions.length-3} more session${sessions.length-3>1?'s':''}</div>`:''}</div>`:'';const isSelected=_selectedPlanId===p.id;return `<div class="plan-card" style="${isSelected?'border-left:3px solid var(--amber);':''}"><div class="plan-card-inner"><div class="plan-top"><div class="plan-name">${esc(p.name)}</div><div style="display:flex;gap:6px;flex-shrink:0;"><button class="btn-edit" onclick="editPlan('${p.id}')">✏️</button><button class="btn-del" onclick="deletePlan('${p.id}')">✕</button></div></div>${p.notes?`<div class="plan-note">${esc(p.notes)}</div>`:''}<div class="plan-badge-row">${countdownChip}${hrsChip}${courseChip}<span class="plan-chip pc-past">📅 ${fmtPlanDate(p.date)}</span></div>${pct!==null?`<div class="plan-prog-row"><span>Study Progress</span><span>${pct}%</span></div><div class="plan-prog-bar"><div class="plan-prog-fill ${isOverdue&&!isDone?'overdue':''}" style="width:${pct}%"></div></div>`:''}<div style="margin-top:8px;display:flex;gap:6px;"><button class="btn btn-ghost" style="flex:1;font-size:12px;min-height:36px;" onclick="logSessionForPlan('${p.id}')">+ Log Session</button></div>${sessHTML}</div></div>`;}).join('');}
 function logSessionForPlan(planId){_selectedPlanId=planId;syncGoalLabelFromPlan(planId);saveDay(['overview']);const btn=document.querySelector('#sec-studyplan .subnav-btn');switchSubnav(btn,'sp-study');renderPlanQuickPick();document.getElementById('scroll-area').scrollTop=0;}
 function renderActivePlansOverview(){const el=document.getElementById('ov-plans-list');if(!el)return;const active=meta.plans.filter(p=>{const hrs=getPlanTotalHours(p.id);const pct=p.targetHours?Math.round((hrs/p.targetHours)*100):null;return daysUntil(p.date)>=0&&!(pct!==null&&pct>=100);}).sort((a,b)=>daysUntil(a.date)-daysUntil(b.date));document.getElementById('ov-plans').textContent=active.length;if(!active.length){el.innerHTML=emptyHTML('','No active plans');return;}el.innerHTML=active.slice(0,3).map(p=>{const d=daysUntil(p.date),h=getPlanTotalHours(p.id);const pct=p.targetHours?Math.min(100,Math.round((h/p.targetHours)*100)):null;return `<div class="mini-list-item"><div class="mli-left">${esc(p.name)}${p.course?` <span style="font-size:10px;color:var(--teal);">· ${esc(p.course)}</span>`:''}</div><div class="mli-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;"><span style="font-size:11px;color:${d<=3?'var(--rose)':'var(--teal)'}">${d===0?'Today!':d+'d left'}</span>${pct!==null?`<span style="font-size:11px;color:var(--amber)">${h}h / ${p.targetHours}h</span>`:`<span style="font-size:11px;color:var(--text3)">${h}h logged</span>`}</div></div>`;}).join('');}
@@ -2097,7 +2101,7 @@ function addHabit(){
 function toggleHabit(id){
   if(!data.habits)return;
   const h=data.habits.find(x=>x.id===id);
-  if(h){h.done=!h.done;saveDay(['activities']);}
+  if(h){h.done=!h.done;saveDay(['habits','overview','score']);}
 }
 function renderHabitList(){
   const el=document.getElementById('habit-list');if(!el)return;
