@@ -6,6 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#040403">
+<meta name="apple-mobile-web-app-title" content="Planner">
+<link rel="apple-touch-icon" href="icon.svg">
 <link rel="manifest" href="manifest.json">
 <title>Planner</title>
 <!-- CRITICAL: paint background before ANY other resource loads -->
@@ -204,7 +206,7 @@
   --r:18px;--r-sm:13px;--r-xs:9px;
   --sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);
   --sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px);
-  --nav-h:64px;
+  --nav-h:52px;
   --sidebar-w:220px;
   --spring:cubic-bezier(.34,1.56,.64,1);
   --smooth:cubic-bezier(.4,0,.2,1);
@@ -354,7 +356,7 @@ body{font-family:-apple-system,'DM Sans',sans-serif;background:var(--bg);color:v
 }
 .nav-btn{
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:4px;padding:6px 4px;border:none;background:transparent;cursor:pointer;
+  gap:3px;padding:4px;border:none;background:transparent;cursor:pointer;
   -webkit-tap-highlight-color:transparent;min-height:var(--nav-h);
   position:relative;-webkit-user-select:none;user-select:none;
 }
@@ -447,7 +449,7 @@ body{font-family:-apple-system,'DM Sans',sans-serif;background:var(--bg);color:v
 /* FIX: extra bottom padding on mobile so content clears the nav bar */
 .section{
   display:none;
-  padding:0 0 calc(var(--nav-h) + var(--sab) + 24px);
+  padding:0 0 calc(var(--nav-h) + var(--sab) + 40px);
 }
 .section.active{display:block;animation:fadeUp .26s var(--smooth) both;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
