@@ -16,7 +16,7 @@
 <!-- CRITICAL: paint background before ANY other resource loads -->
 <style>html,body{background:#080706;margin:0;padding:0;}
 @media(prefers-color-scheme:light){html,body{background:#f2ede2;}}</style>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- duplicate font import removed -->
 
 <!-- ── SPLASH: inline so it renders before any external CSS ── -->
 <style>
@@ -2065,8 +2065,8 @@ function editSleepEntry(id){
   const a=result.item;_eid=id;_etype='sleep';
   document.getElementById('edit-sheet-title').textContent='Edit Sleep';
   document.getElementById('edit-sheet-body').innerHTML=`
-    <div class="form-group"><label class="field-label">Sleep Time</label><input type="time" id="ei-sleep-start" value="${a.sleepTime||''}" style="font-size:16px;width:100%;background:var(--surf3);color:var(--text);border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:12px 14px;min-height:48px;-webkit-appearance:none;color-scheme:dark;"></div>
-    <div class="form-group"><label class="field-label">Wake Time</label><input type="time" id="ei-sleep-end" value="${a.wakeTime||''}" style="font-size:16px;width:100%;background:var(--surf3);color:var(--text);border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:12px 14px;min-height:48px;-webkit-appearance:none;color-scheme:dark;"></div>
+    <div class="form-group"><label class="field-label">Sleep Time</label><input type="time" id="ei-sleep-start" value="${a.sleepTime||''}" style="font-size:16px;width:100%;background:var(--surf3);color:var(--text);border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:12px 14px;min-height:48px;-webkit-appearance:none;color-scheme:${_isLight?'light':'dark'};"></div>
+    <div class="form-group"><label class="field-label">Wake Time</label><input type="time" id="ei-sleep-end" value="${a.wakeTime||''}" style="font-size:16px;width:100%;background:var(--surf3);color:var(--text);border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:12px 14px;min-height:48px;-webkit-appearance:none;color-scheme:${_isLight?'light':'dark'};"></div>
     <div class="form-group"><label class="field-label">Duration (hours)</label><input type="number" id="ei-sleepdur" value="${a.duration||''}" min="0.25" max="24" step="0.25" placeholder="Auto-calculated if blank" style="color:var(--amber);font-weight:700;"></div>
     <div class="form-group"><label class="field-label">Quality</label><select id="ei-sleepq"><option value="good" ${(a.quality||'good')==='good'?'selected':''}>😊 Good</option><option value="okay" ${a.quality==='okay'?'selected':''}>😐 Okay</option><option value="poor" ${a.quality==='poor'?'selected':''}>😴 Poor</option></select></div>
     <div class="form-group"><label class="field-label">Notes</label><input type="text" id="ei-sleepnotes" value="${esc(a.notes||'')}"></div>`;
@@ -2083,7 +2083,12 @@ function saveSleepEdit(){
   if(ss!==undefined)updated.sleepTime=ss;
   if(se!==undefined)updated.wakeTime=se;
   if(ss)updated.time=ss;
-  closeEdit();saveItemToDay('activities',_eid,updated,['activities','overview']);renderSleepList();
+  const eid=_eid;
+  const dkSleep=result.dayKey;
+  closeEdit();
+  saveItemToDay('activities',eid,updated,['activities','overview']);
+  renderSleepList();
+  if(dkSleep){const histEl=document.getElementById('more-history');if(histEl&&histEl.style.display!=='none')setTimeout(()=>_renderHistDetail(dkSleep),80);}
 }
 function editWorkoutEntry(id){
   const result=getItemFromAnyDay('activities',id);if(!result)return;
@@ -2104,7 +2109,12 @@ function saveWorkoutEdit(){
   const wtype=g('ei-wtype');
   const label={gym:'🏋️ Gym',run:'🏃 Run',walk:'🚶 Walk',yoga:'🧘 Yoga',sport:'⚽ Sport',swim:'🏊 Swim',cycle:'🚴 Cycle',home:'🏠 Home',other:'Other'}[wtype]||wtype;
   const updated={...result.item,duration:dur,workoutType:wtype,workoutLabel:label,name:label+' Workout',intensity:g('ei-wint'),notes:g('ei-wnotes')};
-  closeEdit();saveItemToDay('activities',_eid,updated,['activities','overview']);renderWorkoutList();
+  const eid2=_eid;
+  const dkWork=result.dayKey;
+  closeEdit();
+  saveItemToDay('activities',eid2,updated,['activities','overview']);
+  renderWorkoutList();
+  if(dkWork){const histEl=document.getElementById('more-history');if(histEl&&histEl.style.display!=='none')setTimeout(()=>_renderHistDetail(dkWork),80);}
 }
 function addHabit(){
   const name=document.getElementById('habit-name').value.trim();
@@ -2112,13 +2122,19 @@ function addHabit(){
   if(!data.habits)data.habits=[];
   if(data.habits.find(h=>h.name.toLowerCase()===name.toLowerCase())){alert('Habit already exists for today.');return;}
   data.habits.push({id:uid(),name,done:false});
-  saveDay(['activities']);
+  saveDay(['habits','overview','score']);
   document.getElementById('habit-name').value='';
+  renderHabitList();
+}
+function deleteHabit(id){
+  data.habits=data.habits.filter(x=>x.id!=id);
+  saveDay(['habits','overview','score']);
+  renderHabitList();
 }
 function toggleHabit(id){
   if(!data.habits)return;
   const h=data.habits.find(x=>x.id===id);
-  if(h){h.done=!h.done;saveDay(['habits','overview','score']);}
+  if(h){h.done=!h.done;saveDay(['habits','overview','score']);renderHabitList();}
 }
 function renderHabitList(){
   const el=document.getElementById('habit-list');if(!el)return;
@@ -2132,7 +2148,7 @@ function renderHabitList(){
     </div>
     <div class="act-foot">
       <button class="btn btn-ghost" style="min-height:34px;font-size:13px;padding:0 14px;" onclick="toggleHabit('${h.id}')">${h.done?'✓ Done':'Mark Done'}</button>
-      <button class="btn-del" onclick="data.habits=data.habits.filter(x=>x.id!='${h.id}');saveDay(['activities'])">✕</button>
+      <button class="btn-del" onclick="deleteHabit('${h.id}')">✕</button>
     </div>
   </div>`).join('');
 }
@@ -2231,7 +2247,7 @@ const DAY_NAMES=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const MTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function getWeekKeys(offset){const now=new Date(),mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7)+offset*7);mon.setHours(0,0,0,0);return Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());});}
 function shiftWeek(dir){weekOffset+=dir;renderWeekly();}
-function renderWeekly(){const keys=getWeekKeys(weekOffset);const d0=keyToDate(keys[0]),d6=keyToDate(keys[6]);document.getElementById('week-lbl').textContent=MTHS[d0.getMonth()]+' '+d0.getDate()+' – '+MTHS[d6.getMonth()]+' '+d6.getDate()+', '+d6.getFullYear();const today=todayKey();document.getElementById('week-strip').innerHTML=keys.map((k,i)=>{const d=getDayData(k);const hasData=d&&((d.sessions||[]).length>0||(d.activities||[]).length>0);return `<div class="wday ${k===today?'today':''} ${hasData?'has-data':''}"><div class="wday-n">${DAY_NAMES[i]}</div><div class="wday-d">${parseInt(k.split('-')[2])}</div></div>`;}).join('');let totalHrs=0,tasksDone=0,tasksAll=0,activeDays=0,totalRating=0,rDays=0;const studyH=[],taskPct=[];let bestDay=null,bestHrs=0;keys.forEach((k,i)=>{const d=getDayData(k);if(!d){studyH.push(0);taskPct.push(0);return;}const dh=sumHours(d.sessions||[]),done=(d.activities||[]).filter(a=>a.done).length,all=(d.activities||[]).length;studyH.push(dh);taskPct.push(all?Math.round((done/all)*100):0);totalHrs+=dh;tasksDone+=done;tasksAll+=all;if(dh>0||all>0)activeDays++;if(d.rating){totalRating+=d.rating;rDays++;}if(dh>bestHrs){bestHrs=dh;bestDay={name:DAY_NAMES[i],hrs:(Math.round(dh*100)/100).toFixed(1),done,all};}});const totalHrsDisp=(Math.round(totalHrs*100)/100).toFixed(1);const avgHrs=activeDays?(Math.round((totalHrs/activeDays)*100)/100).toFixed(1):'0.0';let habitDone=0,habitAll=0;keys.forEach(k=>{const d=getDayData(k);if(!d)return;habitAll+=(d.habits||[]).length;habitDone+=(d.habits||[]).filter(h=>h.done).length;});const habitRate=habitAll?Math.round((habitDone/habitAll)*100):0;const taskR=tasksAll?Math.round((tasksDone/tasksAll)*100):0;const avgR=rDays?(totalRating/rDays).toFixed(1):'—';document.getElementById('report-grid').innerHTML=`<div class="rstat rs-a"><div class="rstat-val">${totalHrsDisp}h</div><div class="rstat-lbl">Total Study</div></div><div class="rstat rs-t"><div class="rstat-val">${avgHrs}h</div><div class="rstat-lbl">Daily Avg</div></div><div class="rstat rs-i"><div class="rstat-val">${taskR}%</div><div class="rstat-lbl">Task Rate</div></div><div class="rstat rs-r"><div class="rstat-val">${activeDays}/7</div><div class="rstat-lbl">Active Days</div></div><div class="rstat rs-p"><div class="rstat-val">0%</div><div class="rstat-lbl">Habit Rate</div></div><div class="rstat rs-g"><div class="rstat-val">${avgR}</div><div class="rstat-lbl">Avg Rating</div></div>`;const maxH=Math.max(...studyH,0.5);document.getElementById('study-bars').innerHTML=studyH.map((h,i)=>`<div class="bar-col"><div class="bar-v">${h>0?h+'h':''}</div><div class="bar ${h>0?'filled':''} ${keys[i]===today?'today':''}" style="height:${Math.max(3,Math.round((h/maxH)*100))}%;"></div><div class="bar-day">${DAY_NAMES[i]}</div></div>`).join('');const maxT=Math.max(...taskPct,1);document.getElementById('task-bars').innerHTML=taskPct.map((p,i)=>`<div class="bar-col"><div class="bar-v">${p>0?p+'%':''}</div><div class="bar ${p>0?'filled':''} ${keys[i]===today?'today':''}" style="height:${Math.max(3,Math.round((p/maxT)*100))}%;"></div><div class="bar-day">${DAY_NAMES[i]}</div></div>`).join('');document.getElementById('best-day').innerHTML=bestDay?`<div class="mini-list-item"><div class="mli-left">Day</div><div class="mli-right">${bestDay.name}</div></div><div class="mini-list-item"><div class="mli-left">Study Time</div><div class="mli-right">${bestDay.hrs}h</div></div><div class="mini-list-item"><div class="mli-left">Tasks</div><div class="mli-right">${bestDay.done}/${bestDay.all}</div></div>`:emptyHTML('','No data this week yet');try{renderWatchAnalytics();}catch(e){}renderSleepWorkoutAnalytics(keys);renderSuggestions(keys);}
+function renderWeekly(){const keys=getWeekKeys(weekOffset);const d0=keyToDate(keys[0]),d6=keyToDate(keys[6]);document.getElementById('week-lbl').textContent=MTHS[d0.getMonth()]+' '+d0.getDate()+' – '+MTHS[d6.getMonth()]+' '+d6.getDate()+', '+d6.getFullYear();const today=todayKey();document.getElementById('week-strip').innerHTML=keys.map((k,i)=>{const d=getDayData(k);const hasData=d&&((d.sessions||[]).length>0||(d.activities||[]).length>0);return `<div class="wday ${k===today?'today':''} ${hasData?'has-data':''}"><div class="wday-n">${DAY_NAMES[i]}</div><div class="wday-d">${parseInt(k.split('-')[2])}</div></div>`;}).join('');let totalHrs=0,tasksDone=0,tasksAll=0,activeDays=0,totalRating=0,rDays=0;const studyH=[],taskPct=[];let bestDay=null,bestHrs=0;keys.forEach((k,i)=>{const d=getDayData(k);if(!d){studyH.push(0);taskPct.push(0);return;}const dh=sumHours(d.sessions||[]),done=(d.activities||[]).filter(a=>a.done).length,all=(d.activities||[]).length;studyH.push(dh);taskPct.push(all?Math.round((done/all)*100):0);totalHrs+=dh;tasksDone+=done;tasksAll+=all;if(dh>0||all>0)activeDays++;if(d.rating){totalRating+=d.rating;rDays++;}if(dh>bestHrs){bestHrs=dh;bestDay={name:DAY_NAMES[i],hrs:(Math.round(dh*100)/100).toFixed(1),done,all};}});const totalHrsDisp=(Math.round(totalHrs*100)/100).toFixed(1);const avgHrs=activeDays?(Math.round((totalHrs/activeDays)*100)/100).toFixed(1):'0.0';let habitDone=0,habitAll=0;keys.forEach(k=>{const d=getDayData(k);if(!d)return;habitAll+=(d.habits||[]).length;habitDone+=(d.habits||[]).filter(h=>h.done).length;});const habitRate=habitAll?Math.round((habitDone/habitAll)*100):0;const taskR=tasksAll?Math.round((tasksDone/tasksAll)*100):0;const avgR=rDays?(totalRating/rDays).toFixed(1):'—';document.getElementById('report-grid').innerHTML=`<div class="rstat rs-a"><div class="rstat-val">${totalHrsDisp}h</div><div class="rstat-lbl">Total Study</div></div><div class="rstat rs-t"><div class="rstat-val">${avgHrs}h</div><div class="rstat-lbl">Daily Avg</div></div><div class="rstat rs-i"><div class="rstat-val">${taskR}%</div><div class="rstat-lbl">Task Rate</div></div><div class="rstat rs-r"><div class="rstat-val">${activeDays}/7</div><div class="rstat-lbl">Active Days</div></div><div class="rstat rs-p"><div class="rstat-val">${habitRate}%</div><div class="rstat-lbl">Habit Rate</div></div><div class="rstat rs-g"><div class="rstat-val">${avgR}</div><div class="rstat-lbl">Avg Rating</div></div>`;const maxH=Math.max(...studyH,0.5);document.getElementById('study-bars').innerHTML=studyH.map((h,i)=>`<div class="bar-col"><div class="bar-v">${h>0?h+'h':''}</div><div class="bar ${h>0?'filled':''} ${keys[i]===today?'today':''}" style="height:${Math.max(3,Math.round((h/maxH)*100))}%;"></div><div class="bar-day">${DAY_NAMES[i]}</div></div>`).join('');const maxT=Math.max(...taskPct,1);document.getElementById('task-bars').innerHTML=taskPct.map((p,i)=>`<div class="bar-col"><div class="bar-v">${p>0?p+'%':''}</div><div class="bar ${p>0?'filled':''} ${keys[i]===today?'today':''}" style="height:${Math.max(3,Math.round((p/maxT)*100))}%;"></div><div class="bar-day">${DAY_NAMES[i]}</div></div>`).join('');document.getElementById('best-day').innerHTML=bestDay?`<div class="mini-list-item"><div class="mli-left">Day</div><div class="mli-right">${bestDay.name}</div></div><div class="mini-list-item"><div class="mli-left">Study Time</div><div class="mli-right">${bestDay.hrs}h</div></div><div class="mini-list-item"><div class="mli-left">Tasks</div><div class="mli-right">${bestDay.done}/${bestDay.all}</div></div>`:emptyHTML('','No data this week yet');try{renderWatchAnalytics();}catch(e){}renderSleepWorkoutAnalytics(keys);renderSuggestions(keys);}
 
 function renderSleepWorkoutAnalytics(keys){
   const el=document.getElementById('sleep-workout-dash');if(!el)return;
