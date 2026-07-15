@@ -1485,16 +1485,14 @@ function hideSplash(){
 }
 /* Failsafe: only on fresh start */
 if(_isFreshStart)setTimeout(()=>{hideSplash();['main-app','auth-screen'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.add('pl-ready');});},12000);
-const APP_VERSION = '2.11.1';
+const APP_VERSION = '2.12.0';
 const CHANGELOG = [
+  'v2.12.0 — UI Polish & Optimizations',
+  '✨ Enhanced card shadows and transitions for a smoother feel',
+  '⚡ Optimized rendering performance & removed dead CSS',
   'v2.11.1 — Minor fixes & enhancements',
   '🐛 Fixed layout overlap issue in FIFA Analytics chart',
-  '⏱️ Added option to add Match Time for Watch List items',
-  'v2.11.0 — Bug fixes & FIFA Analytics',
-  '⚽ FIFA 2026 Analytics auto-detected from Zee5 watchlist',
-  '🐛 History card refreshes after editing sessions, activities, schedule, watchlist',
-  '🐛 Habits carry-forward toggle now shows correct visual state',
-  '🐛 CSS --border1 undefined — fixed to use correct var(--border)'
+  '⏱️ Added option to add Match Time for Watch List items'
 ];
 
 let _swWaiting = null;
@@ -1508,7 +1506,7 @@ if ('serviceWorker' in navigator) {
   });
 
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=2.11.1', {
+    navigator.serviceWorker.register('./sw.js?v=2.12.0', {
       /* updateViaCache:'none' forces the browser to always fetch sw.js
          from the network, not from HTTP cache — critical on Android */
       updateViaCache: 'none'
