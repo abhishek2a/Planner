@@ -1485,7 +1485,7 @@ function hideSplash(){
 }
 /* Failsafe: only on fresh start */
 if(_isFreshStart)setTimeout(()=>{hideSplash();['main-app','auth-screen'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.add('pl-ready');});},12000);
-const APP_VERSION = '2.13.0';
+const APP_VERSION = '2.13.1';
 const CHANGELOG = [
   'v2.13.0 — Post-FIFA Update',
   '🧹 Removed FIFA 2026 Analytics module',
@@ -1507,7 +1507,7 @@ if ('serviceWorker' in navigator) {
   });
 
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=2.13.0', {
+    navigator.serviceWorker.register('./sw.js?v=2.13.1', {
       /* updateViaCache:'none' forces the browser to always fetch sw.js
          from the network, not from HTTP cache — critical on Android */
       updateViaCache: 'none'
@@ -1711,11 +1711,12 @@ function addDays(k,n){const d=keyToDate(k);d.setDate(d.getDate()+n);return d.get
 function keyToDate(k){const[y,m,d]=k.split('-');return new Date(+y,+m-1,+d);}
 function fmtKey(k){if(!k)return '';const d=keyToDate(k);return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]+', '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getDate()+' '+d.getFullYear();}
 
-function loadMeta(){try{const s=localStorage.getItem(META_K);if(s){meta=JSON.parse(s);if(!meta.plans)meta.plans=[];if(!meta.courses||!meta.courses.length)meta.courses=['CSEB'];else if(!meta.courses.includes('CSEB'))meta.courses.unshift('CSEB');if(meta.autoCarryActivities===undefined)meta.autoCarryActivities=false;if(meta.autoCarryHabits===undefined)meta.autoCarryHabits=false;}}catch(e){}}
+function loadMeta(){try{const s=localStorage.getItem(META_K);if(s){meta=JSON.parse(s);if(!meta.plans)meta.plans=[];if(!meta.courses||!meta.courses.length)meta.courses=['CSEB'];else if(!meta.courses.includes('CSEB'))meta.courses.unshift('CSEB');if(meta.autoCarryActivities===undefined)meta.autoCarryActivities=false;if(meta.autoCarryHabits===undefined)meta.autoCarryHabits=false;}}catch(e){}_calcAppStreak();}
 function saveMeta(){try{localStorage.setItem(META_K,JSON.stringify(meta));}catch(e){showStorageError();}_syncMeta();}
 function loadDay(k){try{const s=localStorage.getItem(STORE+k);if(s){data=JSON.parse(s);if(!data.habits)data.habits=[];}else{data=emptyDay();const prev=getDayData(addDays(k,-1));if(prev&&prev.goal)data.goal=JSON.parse(JSON.stringify(prev.goal));if(meta.autoCarryActivities&&prev&&prev.activities){const unfinished=prev.activities.filter(a=>!a.done);unfinished.forEach(a=>data.activities.push({...a,id:uid(),done:false,carriedFrom:addDays(k,-1)}));}if(meta.autoCarryHabits&&prev&&prev.habits){const unfinished=prev.habits.filter(a=>!a.done);unfinished.forEach(a=>data.habits.push({...a,id:uid(),done:false,carriedFrom:addDays(k,-1)}));}}}catch(e){data=emptyDay();}}
 function _touchUpdated(d){const n=Date.now();['sessions','schedule','activities','watchlist','habits'].forEach(k=>{if(d[k])d[k].forEach(x=>{if(!x.updatedAt)x.updatedAt=n;});});}
-function saveDay(secs){_touchUpdated(data);try{localStorage.setItem(STORE+currentKey,JSON.stringify(data));}catch(e){showStorageError();return;}invalidateDayKeysCache();_invalidateDayDataCache(currentKey);_invalidatePlanCache();_invalidateWatchCache();render(secs);_syncDay(currentKey,data);}
+function _calcAppStreak(){let s=0,ck=todayKey(),todayActive=false;const dToday=ck===currentKey?data:getDayData(ck);if(dToday&&((dToday.sessions||[]).length>0||(dToday.activities||[]).some(a=>a.done)||(dToday.habits||[]).some(h=>h.done)))todayActive=true;if(todayActive){s++;ck=addDays(ck,-1);}else ck=addDays(ck,-1);for(let i=0;i<365;i++){const d=ck===currentKey?data:getDayData(ck);if(d&&((d.sessions||[]).length>0||(d.activities||[]).some(a=>a.done)||(d.habits||[]).some(h=>h.done))){s++;ck=addDays(ck,-1);}else break;}if(meta.streak!==s){meta.streak=s;saveMeta();}}
+function saveDay(secs){_calcAppStreak();_touchUpdated(data);try{localStorage.setItem(STORE+currentKey,JSON.stringify(data));}catch(e){showStorageError();return;}invalidateDayKeysCache();_invalidateDayDataCache(currentKey);_invalidatePlanCache();_invalidateWatchCache();render(secs);_syncDay(currentKey,data);}
 const _dayDataCache=new Map();
 function getDayData(k){
   if(_dayDataCache.has(k))return _dayDataCache.get(k);
