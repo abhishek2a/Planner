@@ -1,6 +1,6 @@
-﻿/* ── Planner Service Worker v5.0.0 ── */
+﻿/* ── Planner Service Worker v5.1.0 ── */
 /* Safari iOS compatible — explicit skipWaiting only via SKIP_WAITING message */
-const APP_VERSION = '5.0.0';
+const APP_VERSION = '5.1.0';
 const CACHE_NAME  = 'planner-v' + APP_VERSION;
 
 const PRECACHE = ['./', './index.html'];
